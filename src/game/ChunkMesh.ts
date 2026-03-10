@@ -109,7 +109,17 @@ export function buildChunkMesh(cx: number, cz: number) {
 
             for (let j = 0; j < 4; j++) {
               const corner = face.corners[j];
-              positions.push(wx + corner[0], y + corner[1], wz + corner[2]);
+              let yOffset = corner[1];
+              
+              if (isWater(block) && face.dir[1] === 1) {
+                const level = block === BLOCKS.WATER ? 8 : block - 2000;
+                yOffset = level / 8;
+              } else if (isWater(block) && face.dir[1] === 0 && corner[1] === 1) {
+                const level = block === BLOCKS.WATER ? 8 : block - 2000;
+                yOffset = level / 8;
+              }
+              
+              positions.push(wx + corner[0], y + yOffset, wz + corner[2]);
               normals.push(...face.dir);
               
               const uv = faceUVs[j];

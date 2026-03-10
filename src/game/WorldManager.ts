@@ -18,7 +18,7 @@ export class WorldManager {
   worldType: 'normal' | 'debug' = 'normal';
 
   constructor() {
-    this.fluidInterval = setInterval(() => this.updateFluids(), 100);
+    this.fluidInterval = setInterval(() => this.updateFluids(), 200);
   }
 
   scheduleFluidUpdate(x: number, y: number, z: number) {
@@ -80,20 +80,21 @@ export class WorldManager {
             const isDeepslate = y < 10 + noise2D(wx * 0.1, wz * 0.1) * 2;
             let block = isDeepslate ? BLOCKS.DEEPSLATE : BLOCKS.STONE;
             
-            const r = Math.random();
-            if (r < 0.005) block = isDeepslate ? BLOCKS.DEEPSLATE_DIAMOND_ORE : BLOCKS.DIAMOND_ORE;
-            else if (r < 0.01) block = isDeepslate ? BLOCKS.DEEPSLATE_GOLD_ORE : BLOCKS.GOLD_ORE;
-            else if (r < 0.02) block = isDeepslate ? BLOCKS.DEEPSLATE_EMERALD_ORE : BLOCKS.EMERALD_ORE;
-            else if (r < 0.04) block = isDeepslate ? BLOCKS.DEEPSLATE_IRON_ORE : BLOCKS.IRON_ORE;
-            else if (r < 0.06) block = isDeepslate ? BLOCKS.DEEPSLATE_COAL_ORE : BLOCKS.COAL_ORE;
-            else if (r < 0.07) block = isDeepslate ? BLOCKS.DEEPSLATE_COPPER_ORE : BLOCKS.COPPER_ORE;
-            else if (r < 0.08) block = isDeepslate ? BLOCKS.DEEPSLATE_REDSTONE_ORE : BLOCKS.REDSTONE_ORE;
-            else if (r < 0.085) block = isDeepslate ? BLOCKS.DEEPSLATE_LAPIS_LAZULI_ORE : BLOCKS.LAPIS_ORE;
-            else if (r < 0.12) block = BLOCKS.GRAVEL;
-            else if (!isDeepslate && r < 0.16) block = BLOCKS.ANDESITE;
-            else if (!isDeepslate && r < 0.20) block = BLOCKS.DIORITE;
-            else if (!isDeepslate && r < 0.24) block = BLOCKS.GRANITE;
-            else if (isDeepslate && r < 0.16) block = BLOCKS.TUFF;
+            // Deterministic ores
+            const oreNoise = (noise2D(wx * 0.345, y * 0.678 + wz * 0.345) + 1) / 2;
+            if (oreNoise < 0.005) block = isDeepslate ? BLOCKS.DEEPSLATE_DIAMOND_ORE : BLOCKS.DIAMOND_ORE;
+            else if (oreNoise < 0.01) block = isDeepslate ? BLOCKS.DEEPSLATE_GOLD_ORE : BLOCKS.GOLD_ORE;
+            else if (oreNoise < 0.02) block = isDeepslate ? BLOCKS.DEEPSLATE_EMERALD_ORE : BLOCKS.EMERALD_ORE;
+            else if (oreNoise < 0.04) block = isDeepslate ? BLOCKS.DEEPSLATE_IRON_ORE : BLOCKS.IRON_ORE;
+            else if (oreNoise < 0.06) block = isDeepslate ? BLOCKS.DEEPSLATE_COAL_ORE : BLOCKS.COAL_ORE;
+            else if (oreNoise < 0.07) block = isDeepslate ? BLOCKS.DEEPSLATE_COPPER_ORE : BLOCKS.COPPER_ORE;
+            else if (oreNoise < 0.08) block = isDeepslate ? BLOCKS.DEEPSLATE_REDSTONE_ORE : BLOCKS.REDSTONE_ORE;
+            else if (oreNoise < 0.085) block = isDeepslate ? BLOCKS.DEEPSLATE_LAPIS_LAZULI_ORE : BLOCKS.LAPIS_ORE;
+            else if (oreNoise < 0.12) block = BLOCKS.GRAVEL;
+            else if (!isDeepslate && oreNoise < 0.16) block = BLOCKS.ANDESITE;
+            else if (!isDeepslate && oreNoise < 0.20) block = BLOCKS.DIORITE;
+            else if (!isDeepslate && oreNoise < 0.24) block = BLOCKS.GRANITE;
+            else if (isDeepslate && oreNoise < 0.16) block = BLOCKS.TUFF;
             
             chunk[index] = block;
           } else if (y === height - 1) {
@@ -107,48 +108,72 @@ export class WorldManager {
             chunk[index] = 0; // Air
           }
         }
+      }
+    }
+
+    // Pass 2: Deterministic Decorations (Trees, Plants)
+    // We check a slightly larger area so trees from neighboring chunks can overlap into this one
+    for (let x = -2; x < CHUNK_SIZE + 2; x++) {
+      for (let z = -2; z < CHUNK_SIZE + 2; z++) {
+        const wx = cx * CHUNK_SIZE + x;
+        const wz = cz * CHUNK_SIZE + z;
         
-        const surfaceBlock = chunk[x + height * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT];
+        const height = Math.floor((noise2D(wx * 0.02, wz * 0.02) + 1) * 10) + 20;
+        const isLavaPool = noise2D(wx * 0.05, wz * 0.05) > 0.75;
         
-        // Add some trees and plants
-        if (surfaceBlock === BLOCKS.GRASS_BLOCK && height < WORLD_HEIGHT - 5 && height > WATER_LEVEL) {
-          const r = Math.random();
-          if (r < 0.01) {
-            chunk[x + (height + 1) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.OAK_LOG; // Wood
-            chunk[x + (height + 2) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.OAK_LOG;
-            chunk[x + (height + 3) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.OAK_LOG;
-            // Leaves
-            for(let lx=-2; lx<=2; lx++) {
-              for(let lz=-2; lz<=2; lz++) {
-                for(let ly=2; ly<=4; ly++) {
-                  if (Math.abs(lx) === 2 && Math.abs(lz) === 2 && ly === 4) continue;
-                  const nx = x + lx;
-                  const nz = z + lz;
-                  if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) {
-                    const lIndex = nx + (height + ly) * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT;
-                    if (chunk[lIndex] === 0) chunk[lIndex] = BLOCKS.OAK_LEAVES;
-                  }
+        if (isLavaPool || height <= WATER_LEVEL || height >= WORLD_HEIGHT - 5) continue;
+        
+        // Deterministic random value for this specific column
+        const r = (noise2D(wx * 123.456, wz * 789.012) + 1) / 2;
+        
+        if (r < 0.08) {
+          // Tree
+          // Log
+          for (let ly = 1; ly <= 3; ly++) {
+            if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
+              const index = x + (height + ly) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT;
+              chunk[index] = BLOCKS.OAK_LOG;
+            }
+          }
+          // Leaves
+          for (let lx = -2; lx <= 2; lx++) {
+            for (let lz = -2; lz <= 2; lz++) {
+              for (let ly = 2; ly <= 4; ly++) {
+                if (Math.abs(lx) === 2 && Math.abs(lz) === 2 && ly === 4) continue;
+                const nx = x + lx;
+                const nz = z + lz;
+                if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE) {
+                  const lIndex = nx + (height + ly) * CHUNK_SIZE + nz * CHUNK_SIZE * WORLD_HEIGHT;
+                  if (chunk[lIndex] === 0) chunk[lIndex] = BLOCKS.OAK_LEAVES;
                 }
               }
             }
-          } else if (r < 0.1) {
+          }
+        } else if (r < 0.19) {
+          if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
             chunk[x + (height + 1) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.SHORT_GRASS;
-          } else if (r < 0.11) {
+          }
+        } else if (r < 0.20) {
+          if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
             chunk[x + (height + 1) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.DANDELION;
-          } else if (r < 0.12) {
+          }
+        } else if (r < 0.21) {
+          if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
             chunk[x + (height + 1) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.POPPY;
           }
         }
-
-        // Add mobs
-        if (surfaceBlock === BLOCKS.GRASS_BLOCK && Math.random() < 0.005) {
-          this.mobs.push({
-            id: Math.random().toString(36).substring(7),
-            type: Math.random() < 0.5 ? 'cow' : 'sheep',
-            x: wx,
-            y: height + 1,
-            z: wz
-          });
+        
+        // Add mobs (only inside the actual chunk to prevent duplicates)
+        if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
+          if (Math.random() < 0.005) {
+            this.mobs.push({
+              id: Math.random().toString(36).substring(7),
+              type: Math.random() < 0.5 ? 'cow' : 'sheep',
+              x: wx,
+              y: height + 1,
+              z: wz
+            });
+          }
         }
       }
     }
@@ -221,7 +246,7 @@ export class WorldManager {
     
     let count = 0;
     for (const key of queue) {
-      if (count++ > 2000) {
+      if (count++ > 500) {
         this.fluidQueue.add(key);
         continue;
       }
@@ -235,6 +260,33 @@ export class WorldManager {
     const isW = isWater(id);
     const isL = isLava(id);
     if (!isW && !isL) return;
+
+    // Check neighbors for interaction
+    const neighbors = [
+      [x + 1, y, z], [x - 1, y, z],
+      [x, y + 1, z], [x, y - 1, z],
+      [x, y, z + 1], [x, y, z - 1]
+    ];
+
+    for (const [nx, ny, nz] of neighbors) {
+      const neighborId = this.getBlock(nx, ny, nz);
+      
+      if (isW && isLava(neighborId)) {
+        // Water touches Lava
+        if (neighborId === BLOCKS.LAVA) {
+          this.setBlock(nx, ny, nz, BLOCKS.OBSIDIAN);
+        } else {
+          this.setBlock(nx, ny, nz, BLOCKS.COBBLESTONE);
+        }
+      } else if (isL && isWater(neighborId)) {
+        // Lava touches Water
+        if (id === BLOCKS.LAVA) {
+          this.setBlock(x, y, z, BLOCKS.OBSIDIAN);
+        } else {
+          this.setBlock(x, y, z, BLOCKS.COBBLESTONE);
+        }
+      }
+    }
 
     const isSource = id === BLOCKS.WATER || id === BLOCKS.LAVA;
     let level = isSource ? 8 : (isW ? id - 2000 : id - 2010);
