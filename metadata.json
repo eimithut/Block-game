@@ -1,0 +1,5 @@
+{
+  "name": "Minecraft Mobile Clone",
+  "description": "A simple Minecraft clone playable on mobile devices with touch controls.",
+  "requestFramePermissions": []
+}
