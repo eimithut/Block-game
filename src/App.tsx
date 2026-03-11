@@ -19,7 +19,7 @@ export default function App() {
     const loadDefaultPack = async () => {
       try {
         setLoadingPack(true);
-        const res = await fetch('https://github.com/eimithut/Block-game/raw/refs/heads/main/public/1.21.10-1.21.9-Template.zip');
+        const res = await fetch('/texturepack.zip');
         if (res.ok) {
           const blob = await res.blob();
           const file = new File([blob], 'texturepack.zip', { type: 'application/zip' });
