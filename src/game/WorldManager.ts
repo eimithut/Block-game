@@ -8,7 +8,9 @@ export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
 export const WATER_LEVEL = 24;
 
-export type MobData = { id: string, type: 'cow' | 'sheep', x: number, y: number, z: number };
+export type MobData = { id: string, type: 'cow' | 'sheep', name: string, x: number, y: number, z: number };
+
+const NAMES = ['Bessie', 'Daisy', 'Moo', 'Woolly', 'Fluffy', 'Baah', 'Spot', 'Patches'];
 
 export class WorldManager {
   chunks: Map<string, Uint16Array> = new Map();
@@ -177,6 +179,7 @@ export class WorldManager {
             this.mobs.push({
               id: Math.random().toString(36).substring(7),
               type: Math.random() < 0.5 ? 'cow' : 'sheep',
+              name: NAMES[Math.floor(Math.random() * NAMES.length)],
               x: wx,
               y: height + 1,
               z: wz

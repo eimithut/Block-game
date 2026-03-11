@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { world, MobData } from './WorldManager';
 import { BLOCKS, isWater, isLava } from './textures';
+import { NameTag } from '../components/NameTag';
 
 function MobEntity({ data }: { data: MobData }) {
   const group = useRef<THREE.Group>(null);
@@ -80,6 +81,7 @@ function MobEntity({ data }: { data: MobData }) {
 
   return (
     <group ref={group} position={[data.x, data.y, data.z]}>
+      <NameTag groupRef={group} name={data.name} />
       <mesh castShadow position={[0, size[1]/2, 0]}>
         <boxGeometry args={size as any} />
         <meshLambertMaterial color={color} />
