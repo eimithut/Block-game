@@ -115,7 +115,6 @@ export default function App() {
             <WorldRenderer />
             <Mobs />
           </Canvas>
-          <div id="name-tags-container" className="absolute top-0 left-0 w-full h-full pointer-events-none" />
           <TouchControls />
           <Hotbar />
           <RoomUI />
