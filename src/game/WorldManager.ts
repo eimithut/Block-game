@@ -16,9 +16,17 @@ export class WorldManager {
   fluidQueue: Set<string> = new Set();
   fluidInterval: any;
   worldType: 'normal' | 'debug' = 'normal';
+  roomId: string | null = null;
+  roomChangeCallbacks: Set<() => void> = new Set();
 
   constructor() {
     this.fluidInterval = setInterval(() => this.updateFluids(), 200);
+  }
+
+  setRoom(roomId: string | null) {
+    this.roomId = roomId;
+    this.chunks.clear();
+    this.roomChangeCallbacks.forEach(cb => cb());
   }
 
   scheduleFluidUpdate(x: number, y: number, z: number) {

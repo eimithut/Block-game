@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "Represents a player in the game.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the player." },
+        "position": { "type": "object", "description": "The player's position (x, y, z)." },
+        "lastSeen": { "type": "string", "format": "date-time", "description": "Last time the player was active." }
+      },
+      "required": ["uid", "position"]
+    },
+    "Block": {
+      "title": "Block",
+      "description": "Represents a block in the world.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "The block type ID." },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "required": ["id", "x", "y", "z"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Represents a game room.",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/players/{uid}": {
+      "schema": { "$ref": "Player" },
+      "description": "Player data collection."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "Room" },
+      "description": "Room data collection."
+    },
+    "/rooms/{roomId}/world/{blockId}": {
+      "schema": { "$ref": "Block" },
+      "description": "World block data collection scoped to a room."
+    }
+  }
+}

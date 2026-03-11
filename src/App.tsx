@@ -4,10 +4,12 @@ import { Player } from './game/Player';
 import { WorldRenderer } from './game/WorldRenderer';
 import { Mobs } from './game/Mobs';
 import { TouchControls, Hotbar } from './components/TouchControls';
+import { RoomUI } from './components/RoomUI';
 import { useState, useRef, useEffect } from 'react';
 import { world } from './game/WorldManager';
 import { loadTexturePack } from './game/textures';
 import { inputState } from './game/inputState';
+import { signIn } from './firebase';
 
 export default function App() {
   const [started, setStarted] = useState(false);
@@ -16,10 +18,11 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    signIn();
     const loadDefaultPack = async () => {
       try {
         setLoadingPack(true);
-        const res = await fetch('/texturepack.zip');
+        const res = await fetch('https://github.com/eimithut/Block-game/raw/refs/heads/main/public/1.21.10-1.21.9-Template.zip');
         if (res.ok) {
           const blob = await res.blob();
           const file = new File([blob], 'texturepack.zip', { type: 'application/zip' });
@@ -114,6 +117,7 @@ export default function App() {
           </Canvas>
           <TouchControls />
           <Hotbar />
+          <RoomUI />
         </>
       )}
     </div>
