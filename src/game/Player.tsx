@@ -19,10 +19,20 @@ export function Player() {
   const pitch = useRef(0);
   const yaw = useRef(0);
 
-  // Initialize camera
+  // Initialize camera and listen for room changes
   useEffect(() => {
     camera.position.copy(position.current);
     camera.rotation.order = 'YXZ';
+
+    const onRoomChange = () => {
+      position.current.set(8, 40, 8);
+      velocity.current.set(0, 0, 0);
+      camera.position.copy(position.current);
+    };
+    world.roomChangeCallbacks.add(onRoomChange);
+    return () => {
+      world.roomChangeCallbacks.delete(onRoomChange);
+    };
   }, [camera]);
 
   useFrame((state, delta) => {

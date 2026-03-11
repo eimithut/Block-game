@@ -2,24 +2,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    match /players/{uid} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == uid;
+    function isOwner(userId) {
+      return isAuthenticated() && userId.matches('^' + request.auth.uid + '.*');
     }
 
-    match /rooms/{roomId} {
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidPlayer(data) {
+      return hasOnlyAllowedFields(['id', 'name', 'x', 'y', 'z', 'skinColor']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 50 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.x is number && data.y is number && data.z is number &&
+             data.skinColor is string && data.skinColor.size() == 7;
+    }
+
+    function isValidBlock(data) {
+      return hasOnlyAllowedFields(['x', 'y', 'z', 'type']) &&
+             data.x is number && data.y is number && data.z is number &&
+             data.type is number;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+    match /rooms/{roomId}/players/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-      
-      match /world/{blockId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
-      }
+      allow create: if isOwner(userId) && isValidPlayer(request.resource.data);
+      allow update: if isOwner(userId) && isValidPlayer(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+    
+    match /rooms/{roomId}/blocks/{blockId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidBlock(request.resource.data);
     }
   }
 }

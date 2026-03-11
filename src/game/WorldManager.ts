@@ -1,8 +1,27 @@
 import { createNoise2D } from 'simplex-noise';
 import { inputState } from './inputState';
 import { BLOCKS, BLOCK_FACES, isWater, isLava } from './textures';
+import { db } from '../firebase';
+import { doc, setDoc, onSnapshot, collection } from 'firebase/firestore';
 
-const noise2D = createNoise2D();
+let noise2D = createNoise2D();
+
+function mulberry32(a: number) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+
+function hashString(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+  }
+  return hash;
+}
 
 export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
@@ -20,6 +39,7 @@ export class WorldManager {
   worldType: 'normal' | 'debug' = 'normal';
   roomId: string | null = null;
   roomChangeCallbacks: Set<() => void> = new Set();
+  blockUnsubscribe: any = null;
 
   constructor() {
     this.fluidInterval = setInterval(() => this.updateFluids(), 200);
@@ -27,7 +47,32 @@ export class WorldManager {
 
   setRoom(roomId: string | null) {
     this.roomId = roomId;
+    if (roomId) {
+      const seed = hashString(roomId);
+      noise2D = createNoise2D(mulberry32(seed));
+    } else {
+      noise2D = createNoise2D();
+    }
     this.chunks.clear();
+    
+    if (this.blockUnsubscribe) {
+      this.blockUnsubscribe();
+      this.blockUnsubscribe = null;
+    }
+
+    if (roomId) {
+      const q = collection(db, 'rooms', roomId, 'blocks');
+      this.blockUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added' || change.type === 'modified') {
+            const data = change.doc.data();
+            this.setBlock(data.x, data.y, data.z, data.type, false);
+            inputState.triggerChunkUpdate(data.x, data.z);
+          }
+        });
+      });
+    }
+
     this.roomChangeCallbacks.forEach(cb => cb());
   }
 
@@ -207,7 +252,7 @@ export class WorldManager {
     return chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT];
   }
 
-  setBlock(x: number, y: number, z: number, type: number) {
+  setBlock(x: number, y: number, z: number, type: number, sync = true) {
     x = Math.floor(x);
     y = Math.floor(y);
     z = Math.floor(z);
@@ -223,6 +268,11 @@ export class WorldManager {
     if (chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT] === type) return;
     chunk[lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * WORLD_HEIGHT] = type;
     
+    if (sync && this.roomId) {
+      const blockDoc = doc(db, 'rooms', this.roomId, 'blocks', `${x}_${y}_${z}`);
+      setDoc(blockDoc, { x, y, z, type }).catch(console.error);
+    }
+
     this.scheduleFluidUpdate(x + 1, y, z);
     this.scheduleFluidUpdate(x - 1, y, z);
     this.scheduleFluidUpdate(x, y + 1, z);

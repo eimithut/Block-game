@@ -1,9 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { world } from '../game/WorldManager';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export function RoomUI() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [joinId, setJoinId] = useState('');
+  const [playerCount, setPlayerCount] = useState(0);
+
+  useEffect(() => {
+    if (!roomId) {
+      setPlayerCount(0);
+      return;
+    }
+    const q = query(collection(db, 'rooms', roomId, 'players'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPlayerCount(snapshot.size);
+    });
+    return () => unsubscribe();
+  }, [roomId]);
 
   const createRoom = () => {
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -23,7 +38,13 @@ export function RoomUI() {
       {roomId ? (
         <div className="bg-zinc-800 text-white p-4 rounded-xl border border-white/10">
           <p className="text-sm text-zinc-400">Room Code:</p>
-          <p className="text-2xl font-mono font-bold text-green-400">{roomId}</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-2xl font-mono font-bold text-green-400">{roomId}</p>
+            <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-sm font-bold">{playerCount} Player{playerCount !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="bg-zinc-800 text-white p-4 rounded-xl border border-white/10 flex flex-col gap-2">

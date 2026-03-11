@@ -50,7 +50,9 @@ export function WorldRenderer() {
   useEffect(() => {
     const onRoomChange = () => setRoomId(world.roomId);
     world.roomChangeCallbacks.add(onRoomChange);
-    return () => world.roomChangeCallbacks.delete(onRoomChange);
+    return () => {
+      world.roomChangeCallbacks.delete(onRoomChange);
+    };
   }, []);
 
   useEffect(() => {
