@@ -10,7 +10,7 @@ import { PauseMenu } from './components/PauseMenu';
 import { Chat } from './components/Chat';
 import { useState, useRef, useEffect } from 'react';
 import { world } from './game/WorldManager';
-import { loadTexturePack } from './game/textures';
+import { loadTexturePack, loadPublicOverrides, applyTextureOverride } from './game/textures';
 import { inputState } from './game/inputState';
 import { signIn } from './firebase';
 
@@ -45,6 +45,9 @@ export default function App() {
     const loadDefaultPack = async () => {
       try {
         setLoadingPack(true);
+        // First check for individual overrides in /public/textures/
+        await loadPublicOverrides();
+        
         const res = await fetch('https://github.com/eimithut/Block-game/raw/refs/heads/main/public/1.21.10-1.21.9-Template.zip');
         if (res.ok) {
           const blob = await res.blob();
@@ -60,6 +63,43 @@ export default function App() {
       }
     };
     loadDefaultPack();
+  }, []);
+
+  useEffect(() => {
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      const files = Array.from(e.dataTransfer?.files || []);
+      for (const file of files) {
+        if (file.name.endsWith('.png')) {
+          const name = file.name.replace('.png', '');
+          const success = await applyTextureOverride(name, file);
+          if (success) {
+            console.log(`Applied texture override for ${name} from dropped file`);
+          }
+        } else if (file.name.endsWith('.zip')) {
+          setLoadingPack(true);
+          try {
+            await loadTexturePack(file);
+            alert('Texture pack loaded successfully!');
+          } catch (err) {
+            console.error(err);
+            alert('Failed to load texture pack.');
+          }
+          setLoadingPack(false);
+        }
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('drop', handleDrop);
+    window.addEventListener('dragover', handleDragOver);
+    return () => {
+      window.removeEventListener('drop', handleDrop);
+      window.removeEventListener('dragover', handleDragOver);
+    };
   }, []);
 
   const handleTexturePackUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

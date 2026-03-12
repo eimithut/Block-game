@@ -267,6 +267,78 @@ setInterval(() => {
   }
 }, 50);
 
+export async function applyTextureOverride(name: string, source: string | Blob) {
+  const canvas = textureAtlas.image as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  
+  const img = new Image();
+  if (typeof source === 'string') {
+    img.src = source;
+  } else {
+    img.src = URL.createObjectURL(source);
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    let updated = false;
+    Object.entries(TILE_MAP).forEach(([tIdStr, tileName]) => {
+      if (tileName === name) {
+        const tId = parseInt(tIdStr);
+        const x = tId % 64;
+        const y = Math.floor(tId / 64);
+        ctx.clearRect(x * 16, y * 16, 16, 16);
+        ctx.drawImage(img, 0, 0, img.width, img.width, x * 16, y * 16, 16, 16);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      textureAtlas.needsUpdate = true;
+      materialOpaque.needsUpdate = true;
+      materialTransparent.needsUpdate = true;
+      window.dispatchEvent(new CustomEvent('texture-pack-loaded'));
+    }
+    return updated;
+  } catch (err) {
+    console.error(`Failed to apply texture override for ${name}`, err);
+    return false;
+  }
+}
+
+export async function loadPublicOverrides() {
+  // Common blocks to check for overrides in /public/textures/
+  const commonBlocks = [
+    'stone', 'grass_block_top', 'grass_block_side', 'dirt', 'cobblestone', 
+    'oak_planks', 'oak_log', 'oak_leaves', 'glass', 'bedrock', 'sand', 
+    'gravel', 'water_still', 'lava_still', 'tnt_side', 'tnt_top', 'tnt_bottom',
+    'iron_block', 'gold_block', 'diamond_block', 'emerald_block', 'obsidian',
+    'oak_sapling', 'dandelion', 'poppy', 'brown_mushroom', 'red_mushroom',
+    'iron_ore', 'gold_ore', 'coal_ore', 'diamond_ore', 'emerald_ore', 'redstone_ore', 'lapis_ore',
+    'birch_planks', 'spruce_planks', 'jungle_planks', 'acacia_planks', 'dark_oak_planks',
+    'birch_log', 'spruce_log', 'jungle_log', 'acacia_log', 'dark_oak_log',
+    'birch_leaves', 'spruce_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves',
+    'bricks', 'mossy_cobblestone', 'netherrack', 'soul_sand', 'glowstone', 'end_stone'
+  ];
+
+  console.log('Checking for public texture overrides...');
+  
+  const results = await Promise.allSettled(commonBlocks.map(async (name) => {
+    const url = `/textures/${name}.png`;
+    const res = await fetch(url, { method: 'HEAD' });
+    if (!res.ok) throw new Error('Not found');
+    return applyTextureOverride(name, url);
+  }));
+
+  const appliedCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
+  if (appliedCount > 0) {
+    console.log(`Applied ${appliedCount} public texture overrides`);
+  }
+}
+
 export async function loadTexturePack(file: File) {
   const zip = await JSZip.loadAsync(file);
   const canvas = document.createElement('canvas');
