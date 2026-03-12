@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import { world } from './WorldManager';
 import { NameTag } from '../components/NameTag';
+import { PlayerModel } from './PlayerModel';
 
 enum OperationType {
   CREATE = 'create',
@@ -115,6 +116,7 @@ export function PlayerSync() {
   }, [roomId, userId]);
 
   const lastSyncTime = useRef(0);
+  const lastRot = useRef(0);
 
   useFrame((state) => {
     if (!userId || !roomId || !ready) return;
@@ -124,11 +126,14 @@ export function PlayerSync() {
     if (now - lastSyncTime.current < 100) return;
 
     const pos = state.camera.position;
-    if (pos.distanceTo(playerRef.current) > 0.1) {
+    const rot = state.camera.rotation;
+    if (pos.distanceTo(playerRef.current) > 0.1 || Math.abs(rot.y - lastRot.current) > 0.1) {
       playerRef.current.copy(pos);
+      lastRot.current = rot.y;
       lastSyncTime.current = now;
       setDoc(doc(db, 'rooms', roomId, 'players', userId), {
-        x: pos.x, y: pos.y, z: pos.z
+        x: pos.x, y: pos.y, z: pos.z,
+        yaw: rot.y, pitch: rot.x
       }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'rooms/' + roomId + '/players/' + userId));
     }
   });
@@ -136,13 +141,14 @@ export function PlayerSync() {
   return (
     <>
       {players.map(p => (
-        <group key={p.id} position={[p.x, p.y - 1.6, p.z]}>
-          <NameTag name={p.name} />
-          <mesh castShadow position={[0, 0.8, 0]}>
-            <boxGeometry args={[0.6, 1.6, 0.3]} />
-            <meshLambertMaterial color={p.skinColor} />
-          </mesh>
-        </group>
+        <PlayerModel 
+          key={p.id} 
+          position={[p.x, p.y - 1.6, p.z]} 
+          yaw={p.yaw || 0} 
+          pitch={p.pitch || 0} 
+          skinColor={p.skinColor} 
+          name={p.name} 
+        />
       ))}
     </>
   );

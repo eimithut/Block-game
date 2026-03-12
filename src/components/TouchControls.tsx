@@ -115,7 +115,7 @@ export function TouchControls() {
 
   return (
     <div 
-      className="absolute inset-0 z-10 touch-none"
+      className="absolute inset-0 z-10 touch-none font-mono"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -128,20 +128,48 @@ export function TouchControls() {
       onMouseLeave={handleTouchEnd}
     >
       {/* Crosshair */}
-      <div className="absolute top-1/2 left-1/2 w-4 h-4 -mt-2 -ml-2 border-2 border-white/50 rounded-full pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 w-1 h-1 -mt-0.5 -ml-0.5 bg-white/80 rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-difference opacity-80">
+        <div className="absolute top-1/2 left-0 w-full h-[2px] -translate-y-1/2 bg-white"></div>
+        <div className="absolute left-1/2 top-0 w-[2px] h-full -translate-x-1/2 bg-white"></div>
+      </div>
+
+      <button 
+        className="absolute top-4 left-4 z-50 w-12 h-12 bg-[#C6C6C6] border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] text-black font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 pointer-events-auto flex items-center justify-center"
+        onClick={() => { inputState.paused = true; }}
+        onTouchStart={(e) => { e.stopPropagation(); inputState.paused = true; }}
+        onMouseDown={(e) => { e.stopPropagation(); inputState.paused = true; }}
+      >
+        ||
+      </button>
+
+      <button 
+        className="absolute top-4 left-20 z-50 w-12 h-12 bg-[#C6C6C6] border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] text-black font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 pointer-events-auto flex items-center justify-center"
+        onClick={() => { 
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
+        }}
+        onTouchStart={(e) => { 
+          e.stopPropagation(); 
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
+        }}
+        onMouseDown={(e) => { 
+          e.stopPropagation(); 
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
+        }}
+      >
+        T
+      </button>
 
       {/* Joystick Visual */}
       {joystickActive.current && (
         <div 
-          className="absolute w-24 h-24 rounded-full border-2 border-white/30 bg-black/20 pointer-events-none"
+          className="absolute w-24 h-24 rounded-full border-4 border-white/50 bg-black/20 pointer-events-none"
           style={{
             left: joystickCenter.current.x - 48,
             top: joystickCenter.current.y - 48,
           }}
         >
           <div 
-            className="absolute w-12 h-12 rounded-full bg-white/50"
+            className="absolute w-12 h-12 rounded-full bg-white/50 border-2 border-white"
             style={{
               left: 24 + joystickPos.x - 24,
               top: 24 + joystickPos.y - 24,
@@ -155,7 +183,7 @@ export function TouchControls() {
       
       <div className="absolute bottom-24 right-8 flex flex-col gap-4 pointer-events-auto">
         <button 
-          className="w-16 h-16 rounded-full bg-blue-500/40 border-2 border-blue-500/80 text-white font-bold active:bg-blue-500/60 backdrop-blur-sm"
+          className="w-16 h-16 bg-[#2196F3] border-[4px] border-t-[#64B5F6] border-l-[#64B5F6] border-b-[#1565C0] border-r-[#1565C0] text-white font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
           onClick={() => setShowInventory(true)}
           onTouchStart={(e) => { e.stopPropagation(); setShowInventory(true); }}
           onMouseDown={(e) => { e.stopPropagation(); setShowInventory(true); }}
@@ -163,7 +191,7 @@ export function TouchControls() {
           INV
         </button>
         <button 
-          className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/50 text-white font-bold active:bg-white/40 backdrop-blur-sm"
+          className="w-16 h-16 bg-[#A0A0A0] border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] text-black font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
           onTouchStart={(e) => { e.stopPropagation(); inputState.jump = true; }}
           onMouseDown={(e) => { e.stopPropagation(); inputState.jump = true; }}
         >
@@ -171,18 +199,18 @@ export function TouchControls() {
         </button>
         <div className="flex gap-4">
           <button 
-            className="w-16 h-16 rounded-full bg-red-500/40 border-2 border-red-500/80 text-white font-bold active:bg-red-500/60 backdrop-blur-sm"
+            className="w-16 h-16 bg-[#F44336] border-[4px] border-t-[#E57373] border-l-[#E57373] border-b-[#C62828] border-r-[#C62828] text-white font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
             onTouchStart={(e) => { e.stopPropagation(); inputState.actionBreak = true; }}
             onMouseDown={(e) => { e.stopPropagation(); inputState.actionBreak = true; }}
           >
-            BREAK
+            BRK
           </button>
           <button 
-            className="w-16 h-16 rounded-full bg-green-500/40 border-2 border-green-500/80 text-white font-bold active:bg-green-500/60 backdrop-blur-sm"
+            className="w-16 h-16 bg-[#4CAF50] border-[4px] border-t-[#81C784] border-l-[#81C784] border-b-[#2E7D32] border-r-[#2E7D32] text-white font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
             onTouchStart={(e) => { e.stopPropagation(); inputState.actionPlace = true; }}
             onMouseDown={(e) => { e.stopPropagation(); inputState.actionPlace = true; }}
           >
-            PLACE
+            PLC
           </button>
         </div>
       </div>
@@ -218,11 +246,11 @@ export function Hotbar() {
   ];
 
   return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1 p-1 bg-black/40 rounded-lg backdrop-blur-md pointer-events-auto">
+    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1 p-2 bg-[#C6C6C6] border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] shadow-[4px_4px_0px_rgba(0,0,0,1)] pointer-events-auto">
       {blocks.map(b => (
         <button
           key={b.id}
-          className={`w-10 h-10 md:w-12 md:h-12 rounded border-2 transition-all ${selected === b.id ? 'border-white scale-110 z-10' : 'border-transparent opacity-70'}`}
+          className={`w-10 h-10 md:w-12 md:h-12 border-[4px] transition-all relative ${selected === b.id ? 'border-white shadow-[0_0_0_2px_#000]' : 'border-t-[#555] border-l-[#555] border-b-white border-r-white'}`}
           style={{ backgroundColor: b.color }}
           onClick={() => {
             inputState.selectedBlock = b.id;

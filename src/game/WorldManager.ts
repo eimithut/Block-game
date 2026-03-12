@@ -38,6 +38,7 @@ export class WorldManager {
   fluidInterval: any;
   worldType: 'normal' | 'debug' = 'normal';
   roomId: string | null = null;
+  renderDistance: number = 4;
   roomChangeCallbacks: Set<() => void> = new Set();
   blockUnsubscribe: any = null;
 
@@ -122,6 +123,8 @@ export class WorldManager {
         
         const height = Math.floor((noise2D(wx * 0.02, wz * 0.02) + 1) * 10) + 20;
         const isLavaPool = noise2D(wx * 0.05, wz * 0.05) > 0.75;
+        const tempNoise = noise2D(wx * 0.01, wz * 0.01);
+        const isDesert = tempNoise > 0.4;
         
         for (let y = 0; y < WORLD_HEIGHT; y++) {
           const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT;
@@ -131,11 +134,19 @@ export class WorldManager {
           } else if (isLavaPool && y <= height && y > height - 3) {
             chunk[index] = y === height ? 0 : BLOCKS.LAVA; // Lava pool, air above
             if (chunk[index] === BLOCKS.LAVA) this.scheduleFluidUpdate(wx, y, wz);
-          } else if (y < height - 1) {
-            const isDeepslate = y < 10 + noise2D(wx * 0.1, wz * 0.1) * 2;
-            let block = isDeepslate ? BLOCKS.DEEPSLATE : BLOCKS.STONE;
-            
-            // Deterministic ores
+          } else {
+            // Caves
+            const caveNoise = noise2D(wx * 0.05, y * 0.05 + wz * 0.05);
+            if (caveNoise > 0.4 && y <= height && y > 2) {
+              chunk[index] = 0;
+              continue;
+            }
+
+            if (y < height - 1) {
+              const isDeepslate = y < 10 + noise2D(wx * 0.1, wz * 0.1) * 2;
+              let block = isDeepslate ? BLOCKS.DEEPSLATE : BLOCKS.STONE;
+              
+              // Deterministic ores
             const oreNoise = (noise2D(wx * 0.345, y * 0.678 + wz * 0.345) + 1) / 2;
             if (oreNoise < 0.005) block = isDeepslate ? BLOCKS.DEEPSLATE_DIAMOND_ORE : BLOCKS.DIAMOND_ORE;
             else if (oreNoise < 0.01) block = isDeepslate ? BLOCKS.DEEPSLATE_GOLD_ORE : BLOCKS.GOLD_ORE;
@@ -152,15 +163,16 @@ export class WorldManager {
             else if (isDeepslate && oreNoise < 0.16) block = BLOCKS.TUFF;
             
             chunk[index] = block;
-          } else if (y === height - 1) {
-            chunk[index] = height <= WATER_LEVEL + 1 ? BLOCKS.SAND : BLOCKS.DIRT; // Sand or Dirt
-          } else if (y === height) {
-            chunk[index] = height <= WATER_LEVEL + 1 ? BLOCKS.SAND : BLOCKS.GRASS_BLOCK; // Sand or Grass
-          } else if (y <= WATER_LEVEL) {
-            chunk[index] = BLOCKS.WATER; // Water
-            this.scheduleFluidUpdate(wx, y, wz);
-          } else {
-            chunk[index] = 0; // Air
+            } else if (y === height - 1) {
+              chunk[index] = height <= WATER_LEVEL + 1 || isDesert ? BLOCKS.SAND : BLOCKS.DIRT; // Sand or Dirt
+            } else if (y === height) {
+              chunk[index] = height <= WATER_LEVEL + 1 || isDesert ? BLOCKS.SAND : BLOCKS.GRASS_BLOCK; // Sand or Grass
+            } else if (y <= WATER_LEVEL) {
+              chunk[index] = BLOCKS.WATER; // Water
+              this.scheduleFluidUpdate(wx, y, wz);
+            } else {
+              chunk[index] = 0; // Air
+            }
           }
         }
       }
@@ -175,13 +187,31 @@ export class WorldManager {
         
         const height = Math.floor((noise2D(wx * 0.02, wz * 0.02) + 1) * 10) + 20;
         const isLavaPool = noise2D(wx * 0.05, wz * 0.05) > 0.75;
+        const tempNoise = noise2D(wx * 0.01, wz * 0.01);
+        const isDesert = tempNoise > 0.4;
         
         if (isLavaPool || height <= WATER_LEVEL || height >= WORLD_HEIGHT - 5) continue;
         
         // Deterministic random value for this specific column
         const r = (noise2D(wx * 123.456, wz * 789.012) + 1) / 2;
         
-        if (r < 0.08) {
+        if (isDesert) {
+          if (r < 0.02) {
+            // Cactus
+            const cactusHeight = Math.floor(r * 100) % 3 + 1;
+            for (let ly = 1; ly <= cactusHeight; ly++) {
+              if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
+                const index = x + (height + ly) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT;
+                chunk[index] = BLOCKS.CACTUS;
+              }
+            }
+          } else if (r < 0.05) {
+            if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
+              chunk[x + (height + 1) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.DEAD_BUSH;
+            }
+          }
+        } else {
+          if (r < 0.08) {
           // Tree
           // Log
           for (let ly = 1; ly <= 3; ly++) {
@@ -217,14 +247,18 @@ export class WorldManager {
             chunk[x + (height + 1) * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT] = BLOCKS.POPPY;
           }
         }
+        }
         
         // Add mobs (only inside the actual chunk to prevent duplicates)
         if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
-          if (Math.random() < 0.005) {
+          const mobR = (noise2D(wx * 456.789, wz * 123.456) + 1) / 2;
+          if (mobR < 0.005) {
+            const isCow = noise2D(wx * 789.123, wz * 456.789) > 0;
+            const nameIndex = Math.abs(Math.floor(((noise2D(wx * 321.654, wz * 987.321) + 1) / 2) * NAMES.length)) % NAMES.length;
             this.mobs.push({
-              id: Math.random().toString(36).substring(7),
-              type: Math.random() < 0.5 ? 'cow' : 'sheep',
-              name: NAMES[Math.floor(Math.random() * NAMES.length)],
+              id: `${wx},${wz}`,
+              type: isCow ? 'cow' : 'sheep',
+              name: NAMES[nameIndex],
               x: wx,
               y: height + 1,
               z: wz

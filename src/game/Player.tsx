@@ -11,6 +11,8 @@ const GRAVITY = 30;
 const JUMP_FORCE = 10;
 const MOVE_SPEED = 5;
 
+import { settings } from '../components/PauseMenu';
+
 export function Player() {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -36,24 +38,28 @@ export function Player() {
   }, [camera]);
 
   useFrame((state, delta) => {
-    // Look (Mobile only)
-    yaw.current -= inputState.lookX * 0.003;
-    pitch.current -= inputState.lookY * 0.003;
-    pitch.current = Math.max(-Math.PI / 2 + 0.001, Math.min(Math.PI / 2 - 0.001, pitch.current));
-    
-    camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ');
+    if (!inputState.paused && !inputState.chatting) {
+      // Look (Mobile only)
+      yaw.current -= inputState.lookX * settings.sensitivity;
+      pitch.current -= inputState.lookY * settings.sensitivity;
+      pitch.current = Math.max(-Math.PI / 2 + 0.001, Math.min(Math.PI / 2 - 0.001, pitch.current));
+      
+      camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ');
+    }
     
     inputState.lookX = 0;
     inputState.lookY = 0;
 
     // Movement
     const direction = new THREE.Vector3();
-    const frontVector = new THREE.Vector3(0, 0, -inputState.forward);
-    const sideVector = new THREE.Vector3(inputState.right, 0, 0);
-    
-    direction.addVectors(frontVector, sideVector);
-    if (direction.lengthSq() > 0) {
-      direction.normalize().multiplyScalar(MOVE_SPEED).applyEuler(new THREE.Euler(0, yaw.current, 0));
+    if (!inputState.paused && !inputState.chatting) {
+      const frontVector = new THREE.Vector3(0, 0, -inputState.forward);
+      const sideVector = new THREE.Vector3(inputState.right, 0, 0);
+      
+      direction.addVectors(frontVector, sideVector);
+      if (direction.lengthSq() > 0) {
+        direction.normalize().multiplyScalar(MOVE_SPEED).applyEuler(new THREE.Euler(0, yaw.current, 0));
+      }
     }
 
     velocity.current.x = direction.x;
@@ -64,11 +70,11 @@ export function Player() {
 
     if (inWater) {
       velocity.current.y -= GRAVITY * 0.2 * delta;
-      if (inputState.jump) {
+      if (inputState.jump && !inputState.paused && !inputState.chatting) {
         velocity.current.y = 4;
       }
     } else {
-      if (onGround.current && inputState.jump) {
+      if (onGround.current && inputState.jump && !inputState.paused && !inputState.chatting) {
         velocity.current.y = JUMP_FORCE;
       }
       velocity.current.y -= GRAVITY * delta;
@@ -120,7 +126,7 @@ export function Player() {
     camera.position.y += PLAYER_HEIGHT; // Eye level
 
     // Block interaction
-    if (inputState.actionBreak || inputState.actionPlace) {
+    if ((inputState.actionBreak || inputState.actionPlace) && !inputState.paused && !inputState.chatting) {
       const raycaster = new THREE.Raycaster(camera.position, new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation), 0, 5);
       
       let hit = false;

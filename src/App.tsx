@@ -1,11 +1,13 @@
 import { Canvas } from '@react-three/fiber';
-import { Sky } from '@react-three/drei';
 import { Player } from './game/Player';
 import { PlayerSync } from './game/PlayerSync';
 import { WorldRenderer } from './game/WorldRenderer';
 import { Mobs } from './game/Mobs';
+import { DayNightCycle } from './game/DayNightCycle';
 import { TouchControls, Hotbar } from './components/TouchControls';
 import { RoomUI } from './components/RoomUI';
+import { PauseMenu } from './components/PauseMenu';
+import { Chat } from './components/Chat';
 import { useState, useRef, useEffect } from 'react';
 import { world } from './game/WorldManager';
 import { loadTexturePack } from './game/textures';
@@ -14,9 +16,29 @@ import { signIn } from './firebase';
 
 export default function App() {
   const [started, setStarted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [menuState, setMenuState] = useState<'main' | 'multiplayer'>('main');
+  const [joinId, setJoinId] = useState('');
   const [loadingPack, setLoadingPack] = useState(false);
   const [defaultPackLoaded, setDefaultPackLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handlePause = (paused: boolean) => setIsPaused(paused);
+    inputState.pauseCallbacks.add(handlePause);
+    return () => { inputState.pauseCallbacks.delete(handlePause); };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && started) {
+        if (inputState.chatting || document.activeElement?.tagName === 'INPUT') return;
+        inputState.paused = !inputState.paused;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [started]);
 
   useEffect(() => {
     signIn();
@@ -55,63 +77,121 @@ export default function App() {
     setLoadingPack(false);
   };
 
+  const createRoom = () => {
+    const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    world.setRoom(newRoomId);
+    world.worldType = 'normal';
+    world.chunks.clear();
+    setStarted(true);
+  };
+
+  const joinRoom = () => {
+    if (joinId) {
+      world.setRoom(joinId);
+      world.worldType = 'normal';
+      world.chunks.clear();
+      setStarted(true);
+    }
+  };
+
+  // A simple dirt-like pattern using CSS gradients
+  const dirtBackground = {
+    backgroundColor: '#7A5C46',
+    backgroundImage: `
+      linear-gradient(45deg, #6B4D3A 25%, transparent 25%, transparent 75%, #6B4D3A 75%, #6B4D3A), 
+      linear-gradient(45deg, #6B4D3A 25%, transparent 25%, transparent 75%, #6B4D3A 75%, #6B4D3A)
+    `,
+    backgroundSize: '32px 32px',
+    backgroundPosition: '0 0, 16px 16px'
+  };
+
   return (
-    <div className="w-full h-screen bg-black overflow-hidden relative">
+    <div className="w-full h-screen overflow-hidden relative font-mono selection:bg-black selection:text-white" style={!started ? dirtBackground : { backgroundColor: '#87CEEB' }}>
       {!started ? (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-zinc-900 text-white">
-          <h1 className="text-5xl font-bold mb-8 font-mono text-green-400">MINECRAFT CLONE</h1>
-          <p className="mb-8 text-zinc-400 max-w-md text-center">
-            Click/Touch and drag the left side of the screen to move, right side to look around. Use the buttons to jump, place, and break blocks.
-          </p>
-          <div className="flex flex-col gap-4">
-            <button 
-              className="px-8 py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-xl transition-colors"
-              onClick={() => {
-                world.worldType = 'normal';
-                world.chunks.clear();
-                setStarted(true);
-              }}
-            >
-              PLAY NORMAL WORLD
-            </button>
-            <button 
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-xl transition-colors"
-              onClick={() => {
-                world.worldType = 'debug';
-                world.chunks.clear();
-                setStarted(true);
-              }}
-            >
-              PLAY DEBUG WORLD
-            </button>
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center text-black bg-black/40">
+          <div className="max-w-xl w-full mx-4 flex flex-col items-center">
+            <h1 className="text-5xl md:text-6xl font-black mb-12 text-center tracking-tighter text-white" style={{ textShadow: '4px 4px 0 #333, -2px -2px 0 #333, 2px -2px 0 #333, -2px 2px 0 #333, 2px 2px 0 #333' }}>
+              MINECRAFT CLONE
+            </h1>
             
-            <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col items-center gap-2">
-              <p className="text-sm text-zinc-400">
-                {defaultPackLoaded ? 'Default texture pack loaded!' : 'Want real Minecraft textures?'}
-              </p>
-              <input 
-                type="file" 
-                accept=".zip" 
-                className="hidden" 
-                ref={fileInputRef}
-                onChange={handleTexturePackUpload}
-              />
-              <button 
-                className="px-6 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={loadingPack}
-              >
-                {loadingPack ? 'LOADING...' : 'LOAD CUSTOM TEXTURE PACK (.ZIP)'}
-              </button>
-            </div>
+            {menuState === 'main' ? (
+              <div className="flex flex-col gap-4 w-full max-w-sm">
+                <button 
+                  className="w-full py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
+                  onClick={() => {
+                    world.setRoom(null);
+                    world.worldType = 'normal';
+                    world.chunks.clear();
+                    setStarted(true);
+                  }}
+                >
+                  Singleplayer
+                </button>
+                <button 
+                  className="w-full py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
+                  onClick={() => setMenuState('multiplayer')}
+                >
+                  Multiplayer
+                </button>
+                
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept=".zip" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleTexturePackUpload}
+                  />
+                  <button 
+                    className="w-full py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all disabled:opacity-50"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={loadingPack}
+                  >
+                    {loadingPack ? 'Loading...' : 'Texture Packs...'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 w-full max-w-sm">
+                <h2 className="text-2xl font-bold text-white text-center mb-4" style={{ textShadow: '2px 2px 0 #333' }}>Play Multiplayer</h2>
+                
+                <button 
+                  className="w-full py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
+                  onClick={createRoom}
+                >
+                  Create New Room
+                </button>
+
+                <div className="flex gap-2 mt-4">
+                  <input 
+                    type="text" 
+                    className="flex-1 bg-black/50 border-[4px] border-t-[#555] border-l-[#555] border-b-white border-r-white px-3 py-2 font-bold text-white outline-none focus:bg-black/70 uppercase"
+                    placeholder="ROOM CODE"
+                    value={joinId}
+                    onChange={(e) => setJoinId(e.target.value.toUpperCase())}
+                  />
+                  <button 
+                    className="px-6 py-2 bg-[#C6C6C6] text-black font-bold text-lg border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
+                    onClick={joinRoom}
+                  >
+                    Join
+                  </button>
+                </div>
+
+                <button 
+                  className="w-full mt-8 py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
+                  onClick={() => setMenuState('main')}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : (
         <>
           <Canvas>
-            <Sky sunPosition={[100, 20, 100]} />
-            <ambientLight intensity={0.5} />
-            <pointLight position={[100, 100, 100]} intensity={0.8} />
+            <DayNightCycle />
             <Player />
             <PlayerSync />
             <WorldRenderer />
@@ -120,6 +200,17 @@ export default function App() {
           <TouchControls />
           <Hotbar />
           <RoomUI />
+          <Chat />
+          {isPaused && (
+            <PauseMenu 
+              onResume={() => { inputState.paused = false; }} 
+              onQuit={() => { 
+                inputState.paused = false; 
+                setStarted(false); 
+                world.setRoom(null); 
+              }} 
+            />
+          )}
         </>
       )}
     </div>

@@ -2,6 +2,14 @@ import { BLOCKS } from './textures';
 
 export const inputState = {
   showInventory: false,
+  _paused: false,
+  get paused() { return this._paused; },
+  set paused(val: boolean) {
+    this._paused = val;
+    this.pauseCallbacks.forEach(cb => cb(val));
+  },
+  pauseCallbacks: new Set<(val: boolean) => void>(),
+  chatting: false,
   forward: 0,
   right: 0,
   lookX: 0,

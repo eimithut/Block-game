@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import { buildChunkMesh } from './ChunkMesh';
 import { world } from './WorldManager';
 import { materialOpaque, materialTransparent } from './textures';
 import { inputState } from './inputState';
-
-const RENDER_DISTANCE = 2;
+import * as THREE from 'three';
 
 function Chunk({ cx, cz }: { cx: number, cz: number }) {
   const [geometry, setGeometry] = useState(() => {
@@ -46,14 +45,24 @@ export function WorldRenderer() {
   const { camera } = useThree();
   const [chunks, setChunks] = useState<{cx: number, cz: number}[]>([]);
   const [, setRoomId] = useState(world.roomId);
+  const [rd, setRd] = useState(world.renderDistance);
 
   useEffect(() => {
     const onRoomChange = () => setRoomId(world.roomId);
     world.roomChangeCallbacks.add(onRoomChange);
+    
+    // Check for render distance changes
+    const rdInterval = setInterval(() => {
+      if (world.renderDistance !== rd) {
+        setRd(world.renderDistance);
+      }
+    }, 1000);
+
     return () => {
       world.roomChangeCallbacks.delete(onRoomChange);
+      clearInterval(rdInterval);
     };
-  }, []);
+  }, [rd]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -61,8 +70,8 @@ export function WorldRenderer() {
       const cz = Math.floor(camera.position.z / 16);
       
       const newChunks = [];
-      for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
-        for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
+      for (let x = -rd; x <= rd; x++) {
+        for (let z = -rd; z <= rd; z++) {
           newChunks.push({ cx: cx + x, cz: cz + z });
         }
       }
@@ -78,7 +87,7 @@ export function WorldRenderer() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [camera]);
+  }, [camera, rd]);
 
   return (
     <>

@@ -33,44 +33,20 @@ export function RoomUI() {
     }
   };
 
+  if (!roomId) return null;
+
   return (
-    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
-      {roomId ? (
-        <div className="bg-zinc-800 text-white p-4 rounded-xl border border-white/10">
-          <p className="text-sm text-zinc-400">Room Code:</p>
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-2xl font-mono font-bold text-green-400">{roomId}</p>
-            <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-sm font-bold">{playerCount} Player{playerCount !== 1 ? 's' : ''}</span>
-            </div>
+    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 font-mono">
+      <div className="bg-[#C6C6C6] text-black p-4 border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <p className="text-xs font-bold uppercase mb-1">Room Code:</p>
+        <div className="flex items-center justify-between gap-6">
+          <p className="text-2xl font-black text-black">{roomId}</p>
+          <div className="flex items-center gap-2 bg-black px-3 py-1 border-2 border-[#555]">
+            <div className="w-3 h-3 bg-[#4CAF50] border-2 border-white animate-pulse"></div>
+            <span className="text-sm font-bold text-white uppercase">{playerCount} Player{playerCount !== 1 ? 's' : ''}</span>
           </div>
         </div>
-      ) : (
-        <div className="bg-zinc-800 text-white p-4 rounded-xl border border-white/10 flex flex-col gap-2">
-          <button 
-            className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-bold"
-            onClick={createRoom}
-          >
-            Create Room
-          </button>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              className="bg-zinc-700 px-2 py-1 rounded-lg w-24"
-              placeholder="Room Code"
-              value={joinId}
-              onChange={(e) => setJoinId(e.target.value.toUpperCase())}
-            />
-            <button 
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold"
-              onClick={joinRoom}
-            >
-              Join
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
