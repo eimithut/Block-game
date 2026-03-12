@@ -167,7 +167,7 @@ export default function App() {
                     type="text" 
                     className="flex-1 bg-black/50 border-[4px] border-t-[#555] border-l-[#555] border-b-white border-r-white px-3 py-2 font-bold text-white outline-none focus:bg-black/70 uppercase"
                     placeholder="ROOM CODE"
-                    value={joinId}
+                    value={joinId || ''}
                     onChange={(e) => setJoinId(e.target.value.toUpperCase())}
                   />
                   <button 

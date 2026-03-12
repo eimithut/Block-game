@@ -1,10 +1,11 @@
-import { createNoise2D } from 'simplex-noise';
+import { createNoise2D, createNoise3D } from 'simplex-noise';
 import { inputState } from './inputState';
 import { BLOCKS, BLOCK_FACES, isWater, isLava } from './textures';
 import { db } from '../firebase';
-import { doc, setDoc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, writeBatch } from 'firebase/firestore';
 
 let noise2D = createNoise2D();
+let noise3D = createNoise3D();
 
 function mulberry32(a: number) {
     return function() {
@@ -51,8 +52,10 @@ export class WorldManager {
     if (roomId) {
       const seed = hashString(roomId);
       noise2D = createNoise2D(mulberry32(seed));
+      noise3D = createNoise3D(mulberry32(seed));
     } else {
       noise2D = createNoise2D();
+      noise3D = createNoise3D();
     }
     this.chunks.clear();
     
@@ -116,15 +119,23 @@ export class WorldManager {
       return chunk;
     }
 
+    const columnData = new Array(CHUNK_SIZE * CHUNK_SIZE);
+    
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
         const wx = cx * CHUNK_SIZE + x;
         const wz = cz * CHUNK_SIZE + z;
         
-        const height = Math.floor((noise2D(wx * 0.02, wz * 0.02) + 1) * 10) + 20;
+        const baseHeight = (noise2D(wx * 0.01, wz * 0.01) + 1) * 10 + 20;
+        const mountainNoise = Math.pow(Math.max(0, noise2D(wx * 0.005, wz * 0.005) + 0.2), 3) * 80;
+        const height = Math.min(WORLD_HEIGHT - 2, Math.floor(baseHeight + mountainNoise));
+        
         const isLavaPool = noise2D(wx * 0.05, wz * 0.05) > 0.75;
         const tempNoise = noise2D(wx * 0.01, wz * 0.01);
-        const isDesert = tempNoise > 0.4;
+        const isDesert = tempNoise > 0.4 && height < 28; // Strictly low-lying deserts only
+        const isDeepslateBase = noise2D(wx * 0.1, wz * 0.1) * 2;
+        
+        columnData[x + z * CHUNK_SIZE] = { height, isLavaPool, isDesert, isDeepslateBase };
         
         for (let y = 0; y < WORLD_HEIGHT; y++) {
           const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT;
@@ -136,33 +147,49 @@ export class WorldManager {
             if (chunk[index] === BLOCKS.LAVA) this.scheduleFluidUpdate(wx, y, wz);
           } else {
             // Caves
-            const caveNoise = noise2D(wx * 0.05, y * 0.05 + wz * 0.05);
-            if (caveNoise > 0.4 && y <= height && y > 2) {
-              chunk[index] = 0;
-              continue;
+            const caveNoise1 = noise3D(wx * 0.04, y * 0.04, wz * 0.04);
+            const caveNoise2 = noise3D(wx * 0.04 + 100, y * 0.04 + 100, wz * 0.04 + 100);
+            const isTunnel = Math.abs(caveNoise1) < 0.1 && Math.abs(caveNoise2) < 0.1;
+            const isChamber = noise3D(wx * 0.02, y * 0.02, wz * 0.02) > 0.72;
+            const isCave = isTunnel || isChamber;
+
+            if (isCave && y <= height && y > 2) {
+              // Only allow caves to break the surface in mountains (height > 32)
+              const isMountain = height > 32;
+              const isTopLayers = y > height - 3; // Prevent horizontal holes in the ground
+              const isNearSurface = y > height - 10;
+              
+              if (isTopLayers) {
+                // Never break the very top surface (prevents "holes in the floor")
+              } else if (isNearSurface && !isMountain) {
+                // Skip cave generation near surface if not in a mountain
+              } else {
+                chunk[index] = 0;
+                continue;
+              }
             }
 
             if (y < height - 1) {
-              const isDeepslate = y < 10 + noise2D(wx * 0.1, wz * 0.1) * 2;
+              const isDeepslate = y < 10 + isDeepslateBase;
               let block = isDeepslate ? BLOCKS.DEEPSLATE : BLOCKS.STONE;
               
               // Deterministic ores
-            const oreNoise = (noise2D(wx * 0.345, y * 0.678 + wz * 0.345) + 1) / 2;
-            if (oreNoise < 0.005) block = isDeepslate ? BLOCKS.DEEPSLATE_DIAMOND_ORE : BLOCKS.DIAMOND_ORE;
-            else if (oreNoise < 0.01) block = isDeepslate ? BLOCKS.DEEPSLATE_GOLD_ORE : BLOCKS.GOLD_ORE;
-            else if (oreNoise < 0.02) block = isDeepslate ? BLOCKS.DEEPSLATE_EMERALD_ORE : BLOCKS.EMERALD_ORE;
-            else if (oreNoise < 0.04) block = isDeepslate ? BLOCKS.DEEPSLATE_IRON_ORE : BLOCKS.IRON_ORE;
-            else if (oreNoise < 0.06) block = isDeepslate ? BLOCKS.DEEPSLATE_COAL_ORE : BLOCKS.COAL_ORE;
-            else if (oreNoise < 0.07) block = isDeepslate ? BLOCKS.DEEPSLATE_COPPER_ORE : BLOCKS.COPPER_ORE;
-            else if (oreNoise < 0.08) block = isDeepslate ? BLOCKS.DEEPSLATE_REDSTONE_ORE : BLOCKS.REDSTONE_ORE;
-            else if (oreNoise < 0.085) block = isDeepslate ? BLOCKS.DEEPSLATE_LAPIS_LAZULI_ORE : BLOCKS.LAPIS_ORE;
-            else if (oreNoise < 0.12) block = BLOCKS.GRAVEL;
-            else if (!isDeepslate && oreNoise < 0.16) block = BLOCKS.ANDESITE;
-            else if (!isDeepslate && oreNoise < 0.20) block = BLOCKS.DIORITE;
-            else if (!isDeepslate && oreNoise < 0.24) block = BLOCKS.GRANITE;
-            else if (isDeepslate && oreNoise < 0.16) block = BLOCKS.TUFF;
-            
-            chunk[index] = block;
+              const oreNoise = (noise2D(wx * 0.345, y * 0.678 + wz * 0.345) + 1) / 2;
+              if (oreNoise < 0.005) block = isDeepslate ? BLOCKS.DEEPSLATE_DIAMOND_ORE : BLOCKS.DIAMOND_ORE;
+              else if (oreNoise < 0.01) block = isDeepslate ? BLOCKS.DEEPSLATE_GOLD_ORE : BLOCKS.GOLD_ORE;
+              else if (oreNoise < 0.02) block = isDeepslate ? BLOCKS.DEEPSLATE_EMERALD_ORE : BLOCKS.EMERALD_ORE;
+              else if (oreNoise < 0.04) block = isDeepslate ? BLOCKS.DEEPSLATE_IRON_ORE : BLOCKS.IRON_ORE;
+              else if (oreNoise < 0.06) block = isDeepslate ? BLOCKS.DEEPSLATE_COAL_ORE : BLOCKS.COAL_ORE;
+              else if (oreNoise < 0.07) block = isDeepslate ? BLOCKS.DEEPSLATE_COPPER_ORE : BLOCKS.COPPER_ORE;
+              else if (oreNoise < 0.08) block = isDeepslate ? BLOCKS.DEEPSLATE_REDSTONE_ORE : BLOCKS.REDSTONE_ORE;
+              else if (oreNoise < 0.085) block = isDeepslate ? BLOCKS.DEEPSLATE_LAPIS_LAZULI_ORE : BLOCKS.LAPIS_ORE;
+              else if (oreNoise < 0.12) block = BLOCKS.GRAVEL;
+              else if (!isDeepslate && oreNoise < 0.16) block = BLOCKS.ANDESITE;
+              else if (!isDeepslate && oreNoise < 0.20) block = BLOCKS.DIORITE;
+              else if (!isDeepslate && oreNoise < 0.24) block = BLOCKS.GRANITE;
+              else if (isDeepslate && oreNoise < 0.16) block = BLOCKS.TUFF;
+              
+              chunk[index] = block;
             } else if (y === height - 1) {
               chunk[index] = height <= WATER_LEVEL + 1 || isDesert ? BLOCKS.SAND : BLOCKS.DIRT; // Sand or Dirt
             } else if (y === height) {
@@ -185,10 +212,20 @@ export class WorldManager {
         const wx = cx * CHUNK_SIZE + x;
         const wz = cz * CHUNK_SIZE + z;
         
-        const height = Math.floor((noise2D(wx * 0.02, wz * 0.02) + 1) * 10) + 20;
-        const isLavaPool = noise2D(wx * 0.05, wz * 0.05) > 0.75;
-        const tempNoise = noise2D(wx * 0.01, wz * 0.01);
-        const isDesert = tempNoise > 0.4;
+        let height, isLavaPool, isDesert;
+        
+        if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
+          const col = columnData[x + z * CHUNK_SIZE];
+          height = col.height;
+          isLavaPool = col.isLavaPool;
+          isDesert = col.isDesert;
+        } else {
+          const bH = (noise2D(wx * 0.01, wz * 0.01) + 1) * 10 + 20;
+          const mN = Math.pow(Math.max(0, noise2D(wx * 0.005, wz * 0.005) + 0.2), 3) * 80;
+          height = Math.min(WORLD_HEIGHT - 2, Math.floor(bH + mN));
+          isLavaPool = noise2D(wx * 0.05, wz * 0.05) > 0.75;
+          isDesert = noise2D(wx * 0.01, wz * 0.01) > 0.4 && height < 28;
+        }
         
         if (isLavaPool || height <= WATER_LEVEL || height >= WORLD_HEIGHT - 5) continue;
         
@@ -317,6 +354,9 @@ export class WorldManager {
   }
 
   explode(cx: number, cy: number, cz: number, radius: number) {
+    let batch = this.roomId ? writeBatch(db) : null;
+    let batchCount = 0;
+
     for (let x = -radius; x <= radius; x++) {
       for (let y = -radius; y <= radius; y++) {
         for (let z = -radius; z <= radius; z++) {
@@ -325,12 +365,30 @@ export class WorldManager {
             const by = cy + y;
             const bz = cz + z;
             if (this.getBlock(bx, by, bz) !== BLOCKS.BEDROCK && this.getBlock(bx, by, bz) !== 0) {
-              this.setBlock(bx, by, bz, 0);
+              this.setBlock(bx, by, bz, 0, false); // Don't sync individually
+              
+              if (batch && this.roomId) {
+                const blockDoc = doc(db, 'rooms', this.roomId, 'blocks', `${bx}_${by}_${bz}`);
+                batch.set(blockDoc, { x: bx, y: by, z: bz, type: 0 });
+                batchCount++;
+                
+                // Firestore batch limit is 500
+                if (batchCount >= 490) {
+                  batch.commit().catch(console.error);
+                  batch = writeBatch(db);
+                  batchCount = 0;
+                }
+              }
+              
               inputState.triggerChunkUpdate(bx, bz);
             }
           }
         }
       }
+    }
+    
+    if (batch && batchCount > 0) {
+      batch.commit().catch(console.error);
     }
   }
 

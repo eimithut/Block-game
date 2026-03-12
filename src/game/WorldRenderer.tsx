@@ -7,34 +7,55 @@ import { inputState } from './inputState';
 import * as THREE from 'three';
 
 function Chunk({ cx, cz }: { cx: number, cz: number }) {
-  const [geometry, setGeometry] = useState(() => {
-    world.getOrGenerateChunk(cx, cz);
-    return buildChunkMesh(cx, cz);
-  });
+  const [geometry, setGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   useEffect(() => {
-    const onRoomChange = () => {
+    let isMounted = true;
+
+    const generate = async () => {
+      // Yield to main thread to prevent freezing
+      await new Promise(resolve => setTimeout(resolve, 0));
+      if (!isMounted) return;
+      
       world.getOrGenerateChunk(cx, cz);
-      setGeometry(buildChunkMesh(cx, cz));
+      const geo = buildChunkMesh(cx, cz);
+      
+      if (isMounted) {
+        setGeometry(geo);
+      }
+    };
+
+    generate();
+
+    const onRoomChange = () => {
+      generate();
     };
     world.roomChangeCallbacks.add(onRoomChange);
     
+    let updateTimeout: any = null;
     const onUpdate = (ucx: number, ucz: number) => {
       if (ucx === cx && ucz === cz) {
-        setGeometry(buildChunkMesh(cx, cz));
+        if (updateTimeout) clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(() => {
+          generate();
+        }, 50);
       }
     };
     const onTexturePackLoaded = () => {
-      setGeometry(buildChunkMesh(cx, cz));
+      generate();
     };
     inputState.chunkUpdateCallbacks.add(onUpdate);
     window.addEventListener('texture-pack-loaded', onTexturePackLoaded);
     return () => {
+      isMounted = false;
+      if (updateTimeout) clearTimeout(updateTimeout);
       world.roomChangeCallbacks.delete(onRoomChange);
       inputState.chunkUpdateCallbacks.delete(onUpdate);
       window.removeEventListener('texture-pack-loaded', onTexturePackLoaded);
     };
   }, [cx, cz]);
+
+  if (!geometry) return null;
 
   return (
     <mesh geometry={geometry} material={[materialOpaque, materialTransparent]} />
@@ -72,9 +93,11 @@ export function WorldRenderer() {
       const newChunks = [];
       for (let x = -rd; x <= rd; x++) {
         for (let z = -rd; z <= rd; z++) {
-          newChunks.push({ cx: cx + x, cz: cz + z });
+          newChunks.push({ cx: cx + x, cz: cz + z, dist: x*x + z*z });
         }
       }
+      
+      newChunks.sort((a, b) => a.dist - b.dist);
       
       setChunks(prev => {
         if (prev.length !== newChunks.length) return newChunks;

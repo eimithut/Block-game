@@ -10,7 +10,7 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && userId.matches('^' + request.auth.uid + '.*');
+      return isAuthenticated() && userId.matches('^' + request.auth.uid + '(_.*)?$');
     }
 
     function hasOnlyAllowedFields(fields) {
@@ -21,10 +21,12 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidPlayer(data) {
-      return hasOnlyAllowedFields(['id', 'name', 'x', 'y', 'z', 'skinColor']) &&
-             data.id is string && data.id.size() > 0 && data.id.size() < 50 &&
+      return hasOnlyAllowedFields(['id', 'name', 'x', 'y', 'z', 'skinColor', 'yaw', 'pitch']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
              data.x is number && data.y is number && data.z is number &&
+             (!('yaw' in data) || data.yaw is number) &&
+             (!('pitch' in data) || data.pitch is number) &&
              data.skinColor is string && data.skinColor.size() == 7;
     }
 

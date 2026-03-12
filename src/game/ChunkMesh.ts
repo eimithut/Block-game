@@ -30,12 +30,30 @@ export function buildChunkMesh(cx: number, cz: number) {
   const transparentIndices: number[] = [];
   let indexOffset = 0;
 
+  const chunk = world.getOrGenerateChunk(cx, cz);
+  const leftChunk = world.chunks.get(world.getChunkKey(cx - 1, cz));
+  const rightChunk = world.chunks.get(world.getChunkKey(cx + 1, cz));
+  const frontChunk = world.chunks.get(world.getChunkKey(cx, cz + 1));
+  const backChunk = world.chunks.get(world.getChunkKey(cx, cz - 1));
+
+  const getBlockLocal = (x: number, y: number, z: number) => {
+    if (y < 0 || y >= WORLD_HEIGHT) return 0;
+    if (x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE) {
+      return chunk[x + y * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT];
+    }
+    if (x < 0 && leftChunk) return leftChunk[(x + CHUNK_SIZE) + y * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT];
+    if (x >= CHUNK_SIZE && rightChunk) return rightChunk[(x - CHUNK_SIZE) + y * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT];
+    if (z < 0 && backChunk) return backChunk[x + y * CHUNK_SIZE + (z + CHUNK_SIZE) * CHUNK_SIZE * WORLD_HEIGHT];
+    if (z >= CHUNK_SIZE && frontChunk) return frontChunk[x + y * CHUNK_SIZE + (z - CHUNK_SIZE) * CHUNK_SIZE * WORLD_HEIGHT];
+    return 0;
+  };
+
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let y = 0; y < WORLD_HEIGHT; y++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
         const wx = cx * CHUNK_SIZE + x;
         const wz = cz * CHUNK_SIZE + z;
-        const block = world.getBlock(wx, y, wz);
+        const block = chunk[x + y * CHUNK_SIZE + z * CHUNK_SIZE * WORLD_HEIGHT];
 
         if (block === BLOCKS.AIR) continue;
 
@@ -70,11 +88,11 @@ export function buildChunkMesh(cx: number, cz: number) {
 
         for (let i = 0; i < faces.length; i++) {
           const face = faces[i];
-          const nx = wx + face.dir[0];
+          const nx = x + face.dir[0];
           const ny = y + face.dir[1];
-          const nz = wz + face.dir[2];
+          const nz = z + face.dir[2];
 
-          const neighbor = world.getBlock(nx, ny, nz);
+          const neighbor = getBlockLocal(nx, ny, nz);
           
           let renderFace = false;
           if (isTransparent(neighbor)) {

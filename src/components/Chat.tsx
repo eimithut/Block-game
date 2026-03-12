@@ -98,7 +98,7 @@ export function Chat() {
         <form onSubmit={sendMessage} className="pointer-events-auto">
           <input
             type="text"
-            value={inputText}
+            value={inputText || ''}
             onChange={(e) => setInputText(e.target.value)}
             className="w-full bg-black/50 text-white border-2 border-white/50 p-2 outline-none focus:border-white"
             placeholder="Type a message..."

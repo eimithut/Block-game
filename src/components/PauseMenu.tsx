@@ -12,20 +12,24 @@ export const settings = {
 };
 
 export function PauseMenu({ onResume, onQuit }: PauseMenuProps) {
-  const [sens, setSens] = useState(settings.sensitivity);
-  const [renderDist, setRenderDist] = useState(settings.renderDistance);
+  const [sens, setSens] = useState(settings.sensitivity || 0.003);
+  const [renderDist, setRenderDist] = useState(settings.renderDistance || 4);
 
   const handleSensChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    setSens(val);
-    settings.sensitivity = val;
+    if (!isNaN(val)) {
+      setSens(val);
+      settings.sensitivity = val;
+    }
   };
 
   const handleRenderDistChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
-    setRenderDist(val);
-    settings.renderDistance = val;
-    world.renderDistance = val;
+    if (!isNaN(val)) {
+      setRenderDist(val);
+      settings.renderDistance = val;
+      world.renderDistance = val;
+    }
   };
 
   return (
@@ -36,22 +40,22 @@ export function PauseMenu({ onResume, onQuit }: PauseMenuProps) {
         </h2>
         
         <div className="flex flex-col gap-2 mb-4">
-          <label className="text-black font-bold">Sensitivity: {(sens * 1000).toFixed(0)}</label>
+          <label className="text-black font-bold">Sensitivity: {((sens ?? settings.sensitivity) * 1000).toFixed(0)}</label>
           <input 
             type="range" 
             min="0.001" max="0.01" step="0.001" 
-            value={sens} 
+            value={sens || 0.003} 
             onChange={handleSensChange}
             className="w-full"
           />
         </div>
 
         <div className="flex flex-col gap-2 mb-8">
-          <label className="text-black font-bold">Render Distance: {renderDist} chunks</label>
+          <label className="text-black font-bold">Render Distance: {renderDist ?? settings.renderDistance} chunks</label>
           <input 
             type="range" 
             min="2" max="8" step="1" 
-            value={renderDist} 
+            value={renderDist || 4} 
             onChange={handleRenderDistChange}
             className="w-full"
           />
