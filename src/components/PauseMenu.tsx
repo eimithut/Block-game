@@ -92,7 +92,8 @@ export function PauseMenu({ onResume, onQuit }: PauseMenuProps) {
               className="px-4 py-2 bg-[#A0A0A0] text-black font-bold border-[2px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:bg-[#888]"
               onClick={() => {
                 if (mcUsername) {
-                  inputState.playerSkin = `https://crafatar.com/skins/${mcUsername}`;
+                  // Minotar is often more reliable for username-based lookups
+                  inputState.playerSkin = `https://minotar.net/skin/${mcUsername}`;
                 }
               }}
             >

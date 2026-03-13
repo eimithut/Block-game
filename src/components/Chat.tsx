@@ -45,7 +45,7 @@ export function Chat() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 't' && !isTyping && !inputState.paused) {
+      if ((e.key === 't' || e.key === 'Enter') && !isTyping && !inputState.paused) {
         e.preventDefault();
         setIsTyping(true);
         inputState.chatting = true; // Pause game input while typing
@@ -63,7 +63,7 @@ export function Chat() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !world.roomId || !auth.currentUser) return;
+    if (!inputText.trim()) return;
 
     const text = inputText.trim();
     setInputText('');
@@ -150,18 +150,26 @@ export function Chat() {
       }
     }
 
-    try {
-      await addDoc(collection(db, 'rooms', world.roomId, 'chat'), {
+    if (world.roomId && auth.currentUser) {
+      try {
+        await addDoc(collection(db, 'rooms', world.roomId, 'chat'), {
+          text,
+          sender: auth.currentUser.displayName || 'Player',
+          timestamp: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    } else {
+      // Local echo for singleplayer commands or if not logged in
+      setMessages(prev => [...prev.slice(-49), {
+        id: 'local-' + Date.now(),
         text,
-        sender: auth.currentUser.displayName || 'Player',
-        timestamp: serverTimestamp(),
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
+        sender: inputState.playerName || 'Player',
+        timestamp: null
+      }]);
     }
   };
-
-  if (!world.roomId) return null;
 
   return (
     <div className="absolute bottom-20 left-4 z-[60] w-80 font-mono pointer-events-none">
