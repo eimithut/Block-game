@@ -5,6 +5,7 @@ import { doc, setDoc, onSnapshot, collection, query, where, deleteDoc } from 'fi
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import { world } from './WorldManager';
+import { inputState } from './inputState';
 import { NameTag } from '../components/NameTag';
 import { PlayerModel } from './PlayerModel';
 
@@ -93,7 +94,8 @@ export function PlayerSync() {
     const playerDoc = doc(db, 'rooms', roomId, 'players', userId);
     setDoc(playerDoc, {
       id: userId,
-      name: 'Player ' + userId.substring(0, 4),
+      name: inputState.playerName || 'Player',
+      skinUrl: inputState.playerSkin || '',
       x: 8, y: 40, z: 8,
       skinColor: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
     }).then(() => setReady(true)).catch(err => handleFirestoreError(err, OperationType.WRITE, playerDoc.path));
@@ -117,6 +119,7 @@ export function PlayerSync() {
 
   const lastSyncTime = useRef(0);
   const lastRot = useRef(0);
+  const lastMetaSync = useRef(0);
 
   useFrame((state) => {
     if (!userId || !roomId || !ready) return;
@@ -127,14 +130,28 @@ export function PlayerSync() {
 
     const pos = state.camera.position;
     const rot = state.camera.rotation;
-    if (pos.distanceTo(playerRef.current) > 0.1 || Math.abs(rot.y - lastRot.current) > 0.1) {
+    
+    // Check if metadata (name/skin) changed
+    const metaChanged = now - lastMetaSync.current > 2000; // Sync metadata every 2 seconds if changed
+    
+    if (pos.distanceTo(playerRef.current) > 0.1 || Math.abs(rot.y - lastRot.current) > 0.1 || metaChanged) {
       playerRef.current.copy(pos);
       lastRot.current = rot.y;
       lastSyncTime.current = now;
-      setDoc(doc(db, 'rooms', roomId, 'players', userId), {
+      
+      const updateData: any = {
         x: pos.x, y: pos.y, z: pos.z,
         yaw: rot.y, pitch: rot.x
-      }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, 'rooms/' + roomId + '/players/' + userId));
+      };
+
+      if (metaChanged) {
+        updateData.name = inputState.playerName;
+        updateData.skinUrl = inputState.playerSkin;
+        lastMetaSync.current = now;
+      }
+
+      setDoc(doc(db, 'rooms', roomId, 'players', userId), updateData, { merge: true })
+        .catch(err => handleFirestoreError(err, OperationType.WRITE, 'rooms/' + roomId + '/players/' + userId));
     }
   });
 
@@ -148,6 +165,7 @@ export function PlayerSync() {
           pitch={p.pitch || 0} 
           skinColor={p.skinColor} 
           name={p.name} 
+          skinUrl={p.skinUrl}
         />
       ))}
     </>

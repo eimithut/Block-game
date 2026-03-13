@@ -17,6 +17,8 @@ export const inputState = {
   jump: false,
   actionPlace: false,
   actionBreak: false,
+  playerName: 'Player',
+  playerSkin: '', // URL or base64
   selectedBlock: BLOCKS.GRASS_BLOCK, // Default grass
   chunkUpdateCallbacks: new Set<(cx: number, cz: number) => void>(),
   triggerChunkUpdate(x: number, z: number) {

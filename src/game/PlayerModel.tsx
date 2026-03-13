@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useRef, useMemo } from 'react';
+import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { NameTag } from '../components/NameTag';
 
@@ -9,9 +9,10 @@ interface PlayerModelProps {
   pitch: number;
   skinColor: string;
   name: string;
+  skinUrl?: string;
 }
 
-export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerModelProps) {
+export function PlayerModel({ position, yaw, pitch, skinColor, name, skinUrl }: PlayerModelProps) {
   const groupRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
@@ -22,6 +23,20 @@ export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerMod
   const prevPos = useRef(new THREE.Vector3(...position));
   const walkTime = useRef(0);
   const isFirstFrame = useRef(true);
+
+  const skinTexture = useMemo(() => {
+    if (!skinUrl) return null;
+    try {
+      const loader = new THREE.TextureLoader();
+      const tex = loader.load(skinUrl);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      return tex;
+    } catch (e) {
+      console.error('Failed to load skin texture', e);
+      return null;
+    }
+  }, [skinUrl]);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -67,6 +82,10 @@ export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerMod
     }
   });
 
+  const material = skinTexture 
+    ? <meshLambertMaterial map={skinTexture} />
+    : <meshLambertMaterial color={skinColor} />;
+
   return (
     <group ref={groupRef}>
       <NameTag name={name} />
@@ -74,20 +93,20 @@ export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerMod
       {/* Head */}
       <mesh ref={headRef} position={[0, 1.5, 0]} castShadow>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
-        <meshLambertMaterial color={skinColor} />
+        {material}
       </mesh>
 
       {/* Body */}
       <mesh position={[0, 0.9, 0]} castShadow>
         <boxGeometry args={[0.5, 0.7, 0.25]} />
-        <meshLambertMaterial color={skinColor} />
+        {material}
       </mesh>
 
       {/* Left Arm */}
       <group ref={leftArmRef} position={[0.35, 1.25, 0]}>
         <mesh position={[0, -0.35, 0]} castShadow>
           <boxGeometry args={[0.2, 0.7, 0.2]} />
-          <meshLambertMaterial color={skinColor} />
+          {material}
         </mesh>
       </group>
 
@@ -95,7 +114,7 @@ export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerMod
       <group ref={rightArmRef} position={[-0.35, 1.25, 0]}>
         <mesh position={[0, -0.35, 0]} castShadow>
           <boxGeometry args={[0.2, 0.7, 0.2]} />
-          <meshLambertMaterial color={skinColor} />
+          {material}
         </mesh>
       </group>
 
@@ -103,7 +122,7 @@ export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerMod
       <group ref={leftLegRef} position={[0.15, 0.7, 0]}>
         <mesh position={[0, -0.35, 0]} castShadow>
           <boxGeometry args={[0.2, 0.7, 0.2]} />
-          <meshLambertMaterial color={skinColor} />
+          {material}
         </mesh>
       </group>
 
@@ -111,7 +130,7 @@ export function PlayerModel({ position, yaw, pitch, skinColor, name }: PlayerMod
       <group ref={rightLegRef} position={[-0.15, 0.7, 0]}>
         <mesh position={[0, -0.35, 0]} castShadow>
           <boxGeometry args={[0.2, 0.7, 0.2]} />
-          <meshLambertMaterial color={skinColor} />
+          {material}
         </mesh>
       </group>
     </group>
