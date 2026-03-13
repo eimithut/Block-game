@@ -5,19 +5,30 @@ import { BLOCKS } from '../game/textures';
 export function Inventory({ onSelect, onClose }: { onSelect: (id: number) => void, onClose: () => void }) {
   const blocks = Object.entries(BLOCKS).filter(([name, id]) => id > 0);
   return (
-    <div className="absolute inset-0 z-50 bg-black/90 flex flex-col p-4 md:p-8 pointer-events-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-white text-2xl font-bold">Inventory</h2>
-        <button className="text-white text-3xl font-bold w-12 h-12 flex items-center justify-center bg-white/10 rounded-full" onClick={onClose}>×</button>
+    <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col p-4 md:p-8 pointer-events-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-white text-3xl font-black tracking-tight">INVENTORY</h2>
+        <button 
+          className="text-white text-2xl font-bold w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-colors" 
+          onClick={onClose}
+        >
+          ×
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 gap-2 content-start">
+      <div className="flex-1 overflow-y-auto grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 content-start pb-12">
         {blocks.map(([name, id]) => (
           <button
             key={id}
-            className="aspect-square bg-white/10 border border-white/30 rounded flex items-center justify-center text-[10px] sm:text-xs text-white text-center break-words p-1 hover:bg-white/30 active:bg-white/50"
+            className="aspect-square bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center p-2 hover:bg-white/10 hover:border-white/30 transition-all active:scale-95 group"
             onClick={() => { onSelect(id); onClose(); }}
           >
-            {name.replace(/_/g, ' ')}
+            <div className="w-full h-full flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+               {/* We could use a small canvas or CSS block here, but for now just text/color */}
+               <div className="w-8 h-8 rounded shadow-lg" style={{ backgroundColor: '#888' }}></div>
+            </div>
+            <span className="text-[10px] text-white/60 font-bold uppercase truncate w-full text-center">
+              {name.replace(/_/g, ' ')}
+            </span>
           </button>
         ))}
       </div>
@@ -162,14 +173,14 @@ export function TouchControls() {
       {/* Joystick Visual */}
       {joystickActive.current && (
         <div 
-          className="absolute w-24 h-24 rounded-full border-4 border-white/50 bg-black/20 pointer-events-none"
+          className="absolute w-24 h-24 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm pointer-events-none shadow-xl"
           style={{
             left: joystickCenter.current.x - 48,
             top: joystickCenter.current.y - 48,
           }}
         >
           <div 
-            className="absolute w-12 h-12 rounded-full bg-white/50 border-2 border-white"
+            className="absolute w-12 h-12 rounded-full bg-white/40 border border-white/60 shadow-inner"
             style={{
               left: 24 + joystickPos.x - 24,
               top: 24 + joystickPos.y - 24,
@@ -181,32 +192,34 @@ export function TouchControls() {
       {/* Action Buttons */}
       {showInventory && <Inventory onSelect={(id) => { inputState.selectedBlock = id; }} onClose={() => setShowInventory(false)} />}
       
-      <div className="absolute bottom-24 right-8 flex flex-col gap-4 pointer-events-auto">
+      <div className="absolute bottom-24 right-8 flex flex-col gap-6 pointer-events-auto items-center">
         <button 
-          className="w-16 h-16 bg-[#2196F3] border-[4px] border-t-[#64B5F6] border-l-[#64B5F6] border-b-[#1565C0] border-r-[#1565C0] text-white font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
+          className="w-16 h-16 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center text-xs"
           onClick={() => setShowInventory(true)}
           onTouchStart={(e) => { e.stopPropagation(); setShowInventory(true); }}
           onMouseDown={(e) => { e.stopPropagation(); setShowInventory(true); }}
         >
           INV
         </button>
+        
         <button 
-          className="w-16 h-16 bg-[#A0A0A0] border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] text-black font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
+          className="w-20 h-20 bg-white/30 backdrop-blur-md border border-white/40 rounded-full text-white font-bold shadow-xl active:scale-90 transition-transform flex items-center justify-center"
           onTouchStart={(e) => { e.stopPropagation(); inputState.jump = true; }}
           onMouseDown={(e) => { e.stopPropagation(); inputState.jump = true; }}
         >
           JUMP
         </button>
+
         <div className="flex gap-4">
           <button 
-            className="w-16 h-16 bg-[#F44336] border-[4px] border-t-[#E57373] border-l-[#E57373] border-b-[#C62828] border-r-[#C62828] text-white font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
+            className="w-16 h-16 bg-red-500/40 backdrop-blur-md border border-red-400/50 rounded-full text-white font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center text-xs"
             onTouchStart={(e) => { e.stopPropagation(); inputState.actionBreak = true; }}
             onMouseDown={(e) => { e.stopPropagation(); inputState.actionBreak = true; }}
           >
             BRK
           </button>
           <button 
-            className="w-16 h-16 bg-[#4CAF50] border-[4px] border-t-[#81C784] border-l-[#81C784] border-b-[#2E7D32] border-r-[#2E7D32] text-white font-black shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
+            className="w-16 h-16 bg-green-500/40 backdrop-blur-md border border-green-400/50 rounded-full text-white font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center text-xs"
             onTouchStart={(e) => { e.stopPropagation(); inputState.actionPlace = true; }}
             onMouseDown={(e) => { e.stopPropagation(); inputState.actionPlace = true; }}
           >
@@ -246,12 +259,15 @@ export function Hotbar() {
   ];
 
   return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1 p-2 bg-[#C6C6C6] border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] shadow-[4px_4px_0px_rgba(0,0,0,1)] pointer-events-auto">
+    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-black/40 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl pointer-events-auto">
       {blocks.map(b => (
         <button
           key={b.id}
-          className={`w-10 h-10 md:w-12 md:h-12 border-[4px] transition-all relative ${selected === b.id ? 'border-white shadow-[0_0_0_2px_#000]' : 'border-t-[#555] border-l-[#555] border-b-white border-r-white'}`}
-          style={{ backgroundColor: b.color }}
+          className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl transition-all relative flex items-center justify-center ${
+            selected === b.id 
+              ? 'bg-white/20 border-2 border-white scale-110 shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
+              : 'bg-white/5 border border-white/10 hover:bg-white/10'
+          }`}
           onClick={() => {
             inputState.selectedBlock = b.id;
             setSelected(b.id);
@@ -266,7 +282,9 @@ export function Hotbar() {
             inputState.selectedBlock = b.id;
             setSelected(b.id);
           }}
-        />
+        >
+          <div className="w-8 h-8 rounded-md shadow-inner" style={{ backgroundColor: b.color }}></div>
+        </button>
       ))}
     </div>
   );

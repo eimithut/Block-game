@@ -5,6 +5,7 @@ import { WorldRenderer } from './game/WorldRenderer';
 import { Mobs } from './game/Mobs';
 import { DayNightCycle } from './game/DayNightCycle';
 import { TouchControls, Hotbar } from './components/TouchControls';
+import { KeyboardControls } from './game/KeyboardControls';
 import { RoomUI } from './components/RoomUI';
 import { PauseMenu } from './components/PauseMenu';
 import { Chat } from './components/Chat';
@@ -24,7 +25,12 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const handlePause = (paused: boolean) => setIsPaused(paused);
+    const handlePause = (paused: boolean) => {
+      setIsPaused(paused);
+      if (paused) {
+        document.exitPointerLock?.();
+      }
+    };
     inputState.pauseCallbacks.add(handlePause);
     return () => { inputState.pauseCallbacks.delete(handlePause); };
   }, []);
@@ -229,7 +235,14 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <>
+        <div 
+          className="w-full h-full" 
+          onClick={() => {
+            if (!inputState.paused && !inputState.chatting) {
+              document.body.requestPointerLock?.();
+            }
+          }}
+        >
           <Canvas>
             <DayNightCycle />
             <Player />
@@ -237,6 +250,7 @@ export default function App() {
             <WorldRenderer />
             <Mobs />
           </Canvas>
+          <KeyboardControls />
           <TouchControls />
           <Hotbar />
           <RoomUI />
@@ -251,7 +265,7 @@ export default function App() {
               }} 
             />
           )}
-        </>
+        </div>
       )}
     </div>
   );
