@@ -37,9 +37,27 @@ service cloud.firestore {
              data.type is number;
     }
 
+    function isValidRoom(data) {
+      return hasOnlyAllowedFields(['roomId', 'name', 'hostId', 'hostName', 'isLocked', 'password', 'playerCount', 'createdAt', 'lastActive']) &&
+             data.roomId is string && data.roomId.size() > 0 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.hostId is string &&
+             data.isLocked is bool &&
+             (!('password' in data) || data.password is string) &&
+             (!('playerCount' in data) || data.playerCount is number) &&
+             data.createdAt is string;
+    }
+
     // ===============================================================
     // Match Rules
     // ===============================================================
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidRoom(request.resource.data) && request.resource.data.hostId == request.auth.uid;
+      allow update: if isAuthenticated() && (request.resource.data.hostId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerCount', 'lastActive']));
+      allow delete: if isAuthenticated() && resource.data.hostId == request.auth.uid;
+    }
+
     match /rooms/{roomId}/players/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) && isValidPlayer(request.resource.data);

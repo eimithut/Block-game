@@ -29,9 +29,16 @@
       "type": "object",
       "properties": {
         "roomId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "name": { "type": "string", "description": "Server name" },
+        "hostId": { "type": "string" },
+        "hostName": { "type": "string" },
+        "isLocked": { "type": "boolean" },
+        "password": { "type": "string" },
+        "playerCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastActive": { "type": "string", "format": "date-time" }
       },
-      "required": ["roomId", "createdAt"]
+      "required": ["roomId", "name", "hostId", "isLocked", "createdAt"]
     }
   },
   "firestore": {

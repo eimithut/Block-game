@@ -10,6 +10,7 @@ import { KeyboardControls } from './game/KeyboardControls';
 import { RoomUI } from './components/RoomUI';
 import { PauseMenu } from './components/PauseMenu';
 import { Chat } from './components/Chat';
+import { MultiplayerLobby } from './components/MultiplayerLobby';
 import { useState, useRef, useEffect } from 'react';
 import { world } from './game/WorldManager';
 import { loadTexturePack, loadPublicOverrides, applyTextureOverride } from './game/textures';
@@ -47,7 +48,6 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [menuState, setMenuState] = useState<'main' | 'multiplayer'>('main');
-  const [joinId, setJoinId] = useState('');
   const [loadingPack, setLoadingPack] = useState(false);
   const [defaultPackLoaded, setDefaultPackLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,23 +151,6 @@ export default function App() {
     setLoadingPack(false);
   };
 
-  const createRoom = () => {
-    const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    world.setRoom(newRoomId);
-    world.worldType = 'normal';
-    world.chunks.clear();
-    setStarted(true);
-  };
-
-  const joinRoom = () => {
-    if (joinId) {
-      world.setRoom(joinId);
-      world.worldType = 'normal';
-      world.chunks.clear();
-      setStarted(true);
-    }
-  };
-
   // A simple dirt-like pattern using CSS gradients
   const dirtBackground = {
     backgroundColor: '#7A5C46',
@@ -226,39 +209,14 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-4 w-full max-w-sm">
-                <h2 className="text-2xl font-bold text-white text-center mb-4" style={{ textShadow: '2px 2px 0 #333' }}>Play Multiplayer</h2>
-                
-                <button 
-                  className="w-full py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
-                  onClick={createRoom}
-                >
-                  Create New Room
-                </button>
-
-                <div className="flex gap-2 mt-4">
-                  <input 
-                    type="text" 
-                    className="flex-1 bg-black/50 border-[4px] border-t-[#555] border-l-[#555] border-b-white border-r-white px-3 py-2 font-bold text-white outline-none focus:bg-black/70 uppercase"
-                    placeholder="ROOM CODE"
-                    value={joinId || ''}
-                    onChange={(e) => setJoinId(e.target.value.toUpperCase())}
-                  />
-                  <button 
-                    className="px-6 py-2 bg-[#C6C6C6] text-black font-bold text-lg border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
-                    onClick={joinRoom}
-                  >
-                    Join
-                  </button>
-                </div>
-
-                <button 
-                  className="w-full mt-8 py-3 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all"
-                  onClick={() => setMenuState('main')}
-                >
-                  Cancel
-                </button>
-              </div>
+              <MultiplayerLobby 
+                onBack={() => setMenuState('main')} 
+                onJoin={() => {
+                  world.worldType = 'normal';
+                  world.chunks.clear();
+                  setStarted(true);
+                }}
+              />
             )}
           </div>
         </div>

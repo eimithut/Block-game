@@ -111,11 +111,34 @@ export function PlayerSync() {
       setPlayers(newPlayers);
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'rooms/' + roomId + '/players'));
 
+    // Update room metadata periodically
+    const roomDoc = doc(db, 'rooms', roomId);
+    const updateRoomMeta = () => {
+      // We use a simple setDoc with merge to update playerCount and lastActive
+      // In a more complex app, we'd use a cloud function or a more robust counter
+      setDoc(roomDoc, { 
+        lastActive: new Date().toISOString() 
+      }, { merge: true }).catch(() => {});
+    };
+    
+    updateRoomMeta();
+    const interval = setInterval(updateRoomMeta, 30000); // Every 30 seconds
+
     return () => {
+      clearInterval(interval);
       unsubscribe();
       deleteDoc(playerDoc).catch(err => handleFirestoreError(err, OperationType.DELETE, playerDoc.path));
     };
   }, [roomId, userId]);
+
+  // Separate effect to update player count specifically when the list changes
+  useEffect(() => {
+    if (!roomId || !ready) return;
+    const roomDoc = doc(db, 'rooms', roomId);
+    setDoc(roomDoc, { 
+      playerCount: players.length + 1 
+    }, { merge: true }).catch(() => {});
+  }, [players.length, roomId, ready]);
 
   const lastSyncTime = useRef(0);
   const lastRot = useRef(0);
