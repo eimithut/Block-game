@@ -1,4 +1,4 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Player } from './game/Player';
 import { PlayerSync } from './game/PlayerSync';
 import { PlayerModel } from './game/PlayerModel';
@@ -17,16 +17,28 @@ import { inputState } from './game/inputState';
 import { signIn } from './firebase';
 
 function FreecamBody() {
-  if (!inputState.freecam) return null;
+  const [active, setActive] = useState(inputState.freecam);
+  const [skin, setSkin] = useState(inputState.playerSkin);
+  const [name, setName] = useState(inputState.playerName);
+  
+  useFrame(() => {
+    if (active !== inputState.freecam) setActive(inputState.freecam);
+    if (skin !== inputState.playerSkin) setSkin(inputState.playerSkin);
+    if (name !== inputState.playerName) setName(inputState.playerName);
+  });
+
+  if (!active) return null;
   const { x, y, z, yaw, pitch } = inputState.freecamOrigin;
+  
   return (
     <PlayerModel 
       position={[x, y, z]} 
       yaw={yaw} 
       pitch={pitch} 
-      name={inputState.playerName} 
-      skinUrl={inputState.playerSkin}
+      name={name} 
+      skinUrl={skin}
       skinColor="#ffcc99"
+      frozen={true}
     />
   );
 }
