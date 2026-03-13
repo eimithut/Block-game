@@ -31,15 +31,25 @@ export function Player() {
       velocity.current.set(0, 0, 0);
       camera.position.copy(position.current);
     };
+
+    const onTeleport = (e: any) => {
+      const { x, y, z } = e.detail;
+      position.current.set(x, y, z);
+      velocity.current.set(0, 0, 0);
+      camera.position.copy(position.current);
+    };
+
     world.roomChangeCallbacks.add(onRoomChange);
+    window.addEventListener('teleport', onTeleport);
     return () => {
       world.roomChangeCallbacks.delete(onRoomChange);
+      window.removeEventListener('teleport', onTeleport);
     };
   }, [camera]);
 
   useFrame((state, delta) => {
     if (!inputState.paused && !inputState.chatting) {
-      // Look (Mobile only)
+      // Look
       yaw.current -= inputState.lookX * settings.sensitivity;
       pitch.current -= inputState.lookY * settings.sensitivity;
       pitch.current = Math.max(-Math.PI / 2 + 0.001, Math.min(Math.PI / 2 - 0.001, pitch.current));
@@ -58,72 +68,99 @@ export function Player() {
       
       direction.addVectors(frontVector, sideVector);
       if (direction.lengthSq() > 0) {
-        direction.normalize().multiplyScalar(MOVE_SPEED).applyEuler(new THREE.Euler(0, yaw.current, 0));
+        direction.normalize().multiplyScalar(MOVE_SPEED);
+        if (inputState.freecam) {
+          direction.applyEuler(camera.rotation); // Move in camera direction (3D)
+        } else {
+          direction.applyEuler(new THREE.Euler(0, yaw.current, 0)); // Move on ground
+        }
       }
     }
 
-    velocity.current.x = direction.x;
-    velocity.current.z = direction.z;
-
-    const currentBlock = world.getBlock(Math.floor(position.current.x), Math.floor(position.current.y), Math.floor(position.current.z));
-    const inWater = isWater(currentBlock) || isLava(currentBlock);
-
-    if (inWater) {
-      velocity.current.y -= GRAVITY * 0.2 * delta;
-      if (inputState.jump && !inputState.paused && !inputState.chatting) {
-        velocity.current.y = 4;
+    if (inputState.freecam) {
+      // Freecam movement (no gravity, no collision)
+      const freecamSpeed = MOVE_SPEED * 2;
+      position.current.add(direction.clone().multiplyScalar(freecamSpeed * delta / MOVE_SPEED));
+      
+      // Vertical movement in freecam
+      if (inputState.jump) {
+        position.current.y += freecamSpeed * delta;
       }
+      // We don't have a crouch key yet, but if we did we'd use it for down
+      
+      camera.position.copy(position.current);
+      // Eye level doesn't apply in freecam as we are the drone
     } else {
-      if (onGround.current && inputState.jump && !inputState.paused && !inputState.chatting) {
-        velocity.current.y = JUMP_FORCE;
+      // Normal movement
+      velocity.current.x = direction.x;
+      velocity.current.z = direction.z;
+
+      const currentBlock = world.getBlock(Math.floor(position.current.x), Math.floor(position.current.y), Math.floor(position.current.z));
+      const inWater = isWater(currentBlock) || isLava(currentBlock);
+
+      if (inWater) {
+        velocity.current.y -= GRAVITY * 0.2 * delta;
+        if (inputState.jump && !inputState.paused && !inputState.chatting) {
+          velocity.current.y = 4;
+        }
+      } else {
+        if (onGround.current && inputState.jump && !inputState.paused && !inputState.chatting) {
+          velocity.current.y = JUMP_FORCE;
+        }
+        velocity.current.y -= GRAVITY * delta;
       }
-      velocity.current.y -= GRAVITY * delta;
+
+      // Apply velocity with collision
+      const nextPos = position.current.clone();
+      
+      // Y collision
+      nextPos.y += velocity.current.y * delta;
+      if (checkCollision(nextPos)) {
+        if (velocity.current.y < 0) {
+          onGround.current = true;
+        }
+        velocity.current.y = 0;
+        nextPos.y = position.current.y;
+      } else {
+        onGround.current = false;
+      }
+
+      // X collision
+      const testPosX = position.current.clone();
+      testPosX.x += velocity.current.x * delta;
+      if (checkCollision(testPosX)) {
+        velocity.current.x = 0;
+      } else {
+        nextPos.x += velocity.current.x * delta;
+      }
+
+      // Z collision
+      const testPosZ = position.current.clone();
+      testPosZ.x = nextPos.x;
+      testPosZ.z += velocity.current.z * delta;
+      if (checkCollision(testPosZ)) {
+        velocity.current.z = 0;
+      } else {
+        nextPos.z += velocity.current.z * delta;
+      }
+
+      // Respawn if fallen off
+      if (nextPos.y < -20) {
+        nextPos.set(8, 40, 8);
+        velocity.current.set(0, 0, 0);
+      }
+
+      position.current.copy(nextPos);
+      camera.position.copy(position.current);
+      camera.position.y += PLAYER_HEIGHT; // Eye level
     }
+
     inputState.jump = false;
 
-    // Apply velocity with collision
-    const nextPos = position.current.clone();
-    
-    // Y collision
-    nextPos.y += velocity.current.y * delta;
-    if (checkCollision(nextPos)) {
-      if (velocity.current.y < 0) {
-        onGround.current = true;
-      }
-      velocity.current.y = 0;
-      nextPos.y = position.current.y;
-    } else {
-      onGround.current = false;
-    }
-
-    // X collision
-    const testPosX = position.current.clone();
-    testPosX.x += velocity.current.x * delta;
-    if (checkCollision(testPosX)) {
-      velocity.current.x = 0;
-    } else {
-      nextPos.x += velocity.current.x * delta;
-    }
-
-    // Z collision
-    const testPosZ = position.current.clone();
-    testPosZ.x = nextPos.x; // Keep the X movement if it was successful
-    testPosZ.z += velocity.current.z * delta;
-    if (checkCollision(testPosZ)) {
-      velocity.current.z = 0;
-    } else {
-      nextPos.z += velocity.current.z * delta;
-    }
-
-    // Respawn if fallen off
-    if (nextPos.y < -20) {
-      nextPos.set(8, 40, 8);
-      velocity.current.set(0, 0, 0);
-    }
-
-    position.current.copy(nextPos);
-    camera.position.copy(position.current);
-    camera.position.y += PLAYER_HEIGHT; // Eye level
+    // Update world manager for other components
+    world.playerPos = { x: position.current.x, y: position.current.y, z: position.current.z };
+    world.playerYaw = yaw.current;
+    world.playerPitch = pitch.current;
 
     // Block interaction
     if ((inputState.actionBreak || inputState.actionPlace) && !inputState.paused && !inputState.chatting) {

@@ -70,6 +70,86 @@ export function Chat() {
     setIsTyping(false);
     inputState.chatting = false;
 
+    // Handle commands
+    if (text.startsWith('/')) {
+      const parts = text.slice(1).split(' ');
+      const cmd = parts[0].toLowerCase();
+      const args = parts.slice(1);
+
+      const addSystemMessage = (msg: string) => {
+        setMessages(prev => [...prev, {
+          id: 'system-' + Date.now(),
+          text: msg,
+          sender: 'System',
+          timestamp: null
+        }]);
+      };
+
+      switch (cmd) {
+        case 'freecam':
+          inputState.freecam = !inputState.freecam;
+          if (inputState.freecam) {
+            // Store current position as origin
+            const pos = world.playerPos || { x: 0, y: 0, z: 0 };
+            inputState.freecamOrigin = { 
+              x: pos.x, 
+              y: pos.y, 
+              z: pos.z,
+              yaw: world.playerYaw || 0,
+              pitch: world.playerPitch || 0
+            };
+            addSystemMessage('Freecam enabled. Your body stays here.');
+          } else {
+            addSystemMessage('Freecam disabled.');
+          }
+          return;
+
+        case 'tp':
+          if (args.length === 3) {
+            const x = parseFloat(args[0]);
+            const y = parseFloat(args[1]);
+            const z = parseFloat(args[2]);
+            if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+              window.dispatchEvent(new CustomEvent('teleport', { detail: { x, y, z } }));
+              addSystemMessage(`Teleported to ${x}, ${y}, ${z}`);
+            }
+          } else {
+            addSystemMessage('Usage: /tp <x> <y> <z>');
+          }
+          return;
+
+        case 'time':
+          if (args[0] === 'set') {
+            const val = args[1];
+            if (val === 'day') {
+              window.dispatchEvent(new CustomEvent('settime', { detail: 6000 }));
+              addSystemMessage('Time set to day');
+            } else if (val === 'night') {
+              window.dispatchEvent(new CustomEvent('settime', { detail: 18000 }));
+              addSystemMessage('Time set to night');
+            } else if (!isNaN(parseInt(val))) {
+              window.dispatchEvent(new CustomEvent('settime', { detail: parseInt(val) }));
+              addSystemMessage(`Time set to ${val}`);
+            }
+          } else {
+            addSystemMessage('Usage: /time set <day|night|number>');
+          }
+          return;
+
+        case 'help':
+          addSystemMessage('Commands: /freecam, /tp <x y z>, /time set <day|night|val>, /clear, /help');
+          return;
+
+        case 'clear':
+          setMessages([]);
+          return;
+
+        default:
+          addSystemMessage(`Unknown command: /${cmd}`);
+          return;
+      }
+    }
+
     try {
       await addDoc(collection(db, 'rooms', world.roomId, 'chat'), {
         text,

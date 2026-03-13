@@ -42,9 +42,21 @@ export class WorldManager {
   renderDistance: number = 4;
   roomChangeCallbacks: Set<() => void> = new Set();
   blockUnsubscribe: any = null;
+  playerPos: { x: number, y: number, z: number } = { x: 0, y: 0, z: 0 };
+  playerYaw: number = 0;
+  playerPitch: number = 0;
+  time: number = 6000; // 0-24000
 
   constructor() {
     this.fluidInterval = setInterval(() => this.updateFluids(), 200);
+    
+    window.addEventListener('teleport', (e: any) => {
+      // Handled by Player component
+    });
+
+    window.addEventListener('settime', (e: any) => {
+      this.time = e.detail;
+    });
   }
 
   setRoom(roomId: string | null) {

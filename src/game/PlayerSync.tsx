@@ -128,8 +128,12 @@ export function PlayerSync() {
     const now = performance.now();
     if (now - lastSyncTime.current < 100) return;
 
-    const pos = state.camera.position;
-    const rot = state.camera.rotation;
+    const pos = inputState.freecam ? 
+      new THREE.Vector3(inputState.freecamOrigin.x, inputState.freecamOrigin.y, inputState.freecamOrigin.z) : 
+      state.camera.position;
+    const rot = inputState.freecam ? 
+      { y: inputState.freecamOrigin.yaw, x: inputState.freecamOrigin.pitch } : 
+      state.camera.rotation;
     
     // Check if metadata (name/skin) changed
     const metaChanged = now - lastMetaSync.current > 2000; // Sync metadata every 2 seconds if changed

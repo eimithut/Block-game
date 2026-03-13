@@ -16,6 +16,7 @@ export function PauseMenu({ onResume, onQuit }: PauseMenuProps) {
   const [sens, setSens] = useState(settings.sensitivity || 0.003);
   const [renderDist, setRenderDist] = useState(settings.renderDistance || 4);
   const [name, setName] = useState(inputState.playerName || 'Player');
+  const [mcUsername, setMcUsername] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSensChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +76,29 @@ export function PauseMenu({ onResume, onQuit }: PauseMenuProps) {
             className="w-full bg-black/10 border-2 border-black/20 p-2 text-black font-bold outline-none focus:border-black/40"
             placeholder="Enter name..."
           />
+        </div>
+
+        <div className="flex flex-col gap-2 mb-2">
+          <label className="text-black font-bold">Minecraft Username (Skin)</label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={mcUsername} 
+              onChange={(e) => setMcUsername(e.target.value)}
+              className="flex-1 bg-black/10 border-2 border-black/20 p-2 text-black font-bold outline-none focus:border-black/40"
+              placeholder="Username..."
+            />
+            <button 
+              className="px-4 py-2 bg-[#A0A0A0] text-black font-bold border-[2px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:bg-[#888]"
+              onClick={() => {
+                if (mcUsername) {
+                  inputState.playerSkin = `https://crafatar.com/skins/${mcUsername}`;
+                }
+              }}
+            >
+              Fetch
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2 mb-2">

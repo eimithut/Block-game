@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Player } from './game/Player';
 import { PlayerSync } from './game/PlayerSync';
+import { PlayerModel } from './game/PlayerModel';
 import { WorldRenderer } from './game/WorldRenderer';
 import { Mobs } from './game/Mobs';
 import { DayNightCycle } from './game/DayNightCycle';
@@ -14,6 +15,21 @@ import { world } from './game/WorldManager';
 import { loadTexturePack, loadPublicOverrides, applyTextureOverride } from './game/textures';
 import { inputState } from './game/inputState';
 import { signIn } from './firebase';
+
+function FreecamBody() {
+  if (!inputState.freecam) return null;
+  const { x, y, z, yaw, pitch } = inputState.freecamOrigin;
+  return (
+    <PlayerModel 
+      position={[x, y, z]} 
+      yaw={yaw} 
+      pitch={pitch} 
+      name={inputState.playerName} 
+      skinUrl={inputState.playerSkin}
+      skinColor="#ffcc99"
+    />
+  );
+}
 
 export default function App() {
   const [started, setStarted] = useState(false);
@@ -247,6 +263,7 @@ export default function App() {
             <DayNightCycle />
             <Player />
             <PlayerSync />
+            <FreecamBody />
             <WorldRenderer />
             <Mobs />
           </Canvas>

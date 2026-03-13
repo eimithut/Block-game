@@ -19,6 +19,8 @@ export const inputState = {
   actionBreak: false,
   playerName: 'Player',
   playerSkin: '', // URL or base64
+  freecam: false,
+  freecamOrigin: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 },
   selectedBlock: BLOCKS.GRASS_BLOCK, // Default grass
   chunkUpdateCallbacks: new Set<(cx: number, cz: number) => void>(),
   triggerChunkUpdate(x: number, z: number) {
