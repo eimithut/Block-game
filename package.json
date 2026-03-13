@@ -2,13 +2,35 @@
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
+  "description": "A Minecraft clone built with React and Three.js",
+  "author": "Linus",
   "type": "module",
+  "main": "electron-main.js",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "electron:dev": "electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.minecraft.clone",
+    "productName": "Minecraft Clone",
+    "copyright": "Copyright © 2026 Linus",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main.js",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "verifyUpdateCodeSignature": false
+    }
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -37,6 +59,8 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
   }
 }
