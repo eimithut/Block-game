@@ -23,6 +23,9 @@ export function MultiplayerLobby({ onBack, onJoin }: { onBack: () => void, onJoi
   const [password, setPassword] = useState('');
   const [passwordPrompt, setPasswordPrompt] = useState<{ roomId: string, correctPass: string } | null>(null);
   const [promptInput, setPromptInput] = useState('');
+  const [showJoinByCode, setShowJoinByCode] = useState(false);
+  const [manualCode, setManualCode] = useState('');
+  const [lobbyError, setLobbyError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'rooms'));
@@ -34,6 +37,10 @@ export function MultiplayerLobby({ onBack, onJoin }: { onBack: () => void, onJoi
       // Sort by creation date
       roomList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setRooms(roomList);
+      setLobbyError(null);
+    }, (err) => {
+      console.error("Lobby Snapshot Error:", err);
+      setLobbyError("Failed to load server list. Check your Firebase rules or quota.");
     });
     return () => unsubscribe();
   }, []);
@@ -58,7 +65,7 @@ export function MultiplayerLobby({ onBack, onJoin }: { onBack: () => void, onJoi
       onJoin();
     } catch (err) {
       console.error("Error creating room:", err);
-      alert("Failed to create room. Check your connection.");
+      alert("Failed to create room. " + (err instanceof Error ? err.message : "Check your connection."));
     }
   };
 
@@ -68,6 +75,13 @@ export function MultiplayerLobby({ onBack, onJoin }: { onBack: () => void, onJoi
       setPromptInput('');
     } else {
       world.setRoom(room.roomId);
+      onJoin();
+    }
+  };
+
+  const handleManualJoin = () => {
+    if (manualCode.trim()) {
+      world.setRoom(manualCode.trim().toUpperCase());
       onJoin();
     }
   };
@@ -85,13 +99,27 @@ export function MultiplayerLobby({ onBack, onJoin }: { onBack: () => void, onJoi
     <div className="flex flex-col gap-4 w-full max-w-2xl bg-black/60 p-6 border-[4px] border-[#555] shadow-[8px_8px_0px_rgba(0,0,0,0.5)]">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-3xl font-black text-white uppercase tracking-tighter" style={{ textShadow: '2px 2px 0 #000' }}>Server List</h2>
-        <button 
-          className="px-4 py-2 bg-[#4CAF50] text-white font-bold border-[3px] border-t-white/50 border-l-white/50 border-b-black/50 border-r-black/50 active:border-t-black/50 active:border-l-black/50 active:border-b-white/50 active:border-r-white/50"
-          onClick={() => setShowHostModal(true)}
-        >
-          Host Server
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className="px-4 py-2 bg-[#C6C6C6] text-black font-bold border-[3px] border-t-white/50 border-l-white/50 border-b-black/50 border-r-black/50 active:bg-[#A0A0A0]"
+            onClick={() => setShowJoinByCode(true)}
+          >
+            Join by Code
+          </button>
+          <button 
+            className="px-4 py-2 bg-[#4CAF50] text-white font-bold border-[3px] border-t-white/50 border-l-white/50 border-b-black/50 border-r-black/50 active:bg-[#388E3C]"
+            onClick={() => setShowHostModal(true)}
+          >
+            Host Server
+          </button>
+        </div>
       </div>
+
+      {lobbyError && (
+        <div className="bg-red-500/20 border-2 border-red-500 p-3 text-red-200 text-sm font-bold mb-2">
+          {lobbyError}
+        </div>
+      )}
 
       <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
         {rooms.length === 0 ? (
@@ -178,6 +206,41 @@ export function MultiplayerLobby({ onBack, onJoin }: { onBack: () => void, onJoi
                 onClick={handleHost}
               >
                 Launch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join by Code Modal */}
+      {showJoinByCode && (
+        <div className="absolute inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-[#C6C6C6] p-6 border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] w-full max-w-sm flex flex-col gap-4 text-center">
+            <h3 className="text-2xl font-black uppercase">Join by Code</h3>
+            <p className="text-sm font-bold text-[#555]">Enter the 6-character room code.</p>
+            
+            <input 
+              type="text" 
+              className="w-full bg-black/10 border-[3px] border-t-[#555] border-l-[#555] border-b-white border-r-white p-2 font-bold outline-none text-center uppercase"
+              autoFocus
+              maxLength={6}
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && handleManualJoin()}
+            />
+
+            <div className="flex gap-2 mt-2">
+              <button 
+                className="flex-1 py-2 bg-[#C6C6C6] text-black font-bold border-[3px] border-t-white border-l-white border-b-[#555] border-r-[#555]"
+                onClick={() => setShowJoinByCode(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="flex-1 py-2 bg-[#4CAF50] text-white font-bold border-[3px] border-t-white/50 border-l-white/50 border-b-black/50 border-r-black/50"
+                onClick={handleManualJoin}
+              >
+                Join
               </button>
             </div>
           </div>
