@@ -12,6 +12,8 @@ import { PauseMenu } from './components/PauseMenu';
 import { Chat } from './components/Chat';
 import { MultiplayerLobby } from './components/MultiplayerLobby';
 import { useState, useRef, useEffect } from 'react';
+import { LayoutGrid } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { world } from './game/WorldManager';
 import { loadTexturePack, loadPublicOverrides, applyTextureOverride } from './game/textures';
 import { inputState } from './game/inputState';
@@ -164,6 +166,25 @@ export default function App() {
 
   return (
     <div className="w-full h-screen overflow-hidden relative font-mono selection:bg-black selection:text-white" style={!started ? dirtBackground : { backgroundColor: '#87CEEB' }}>
+      <AnimatePresence>
+        {(!started || isPaused) && (
+          <motion.a
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            href="https://eimithut.pages.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-4 left-4 z-[150] flex items-center gap-2 px-4 py-2 bg-[#C6C6C6] text-black font-bold border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all shadow-[4px_4px_0px_rgba(0,0,0,0.3)] pointer-events-auto"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <LayoutGrid size={20} />
+            <span className="hidden md:inline">All Projects</span>
+          </motion.a>
+        )}
+      </AnimatePresence>
+
       {!started ? (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center text-black bg-black/40">
           <div className="max-w-xl w-full mx-4 flex flex-col items-center">

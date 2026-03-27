@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react';
+import { LayoutGrid } from 'lucide-react';
+import { motion } from 'motion/react';
 import { world } from '../game/WorldManager';
 import { inputState } from '../game/inputState';
 
@@ -154,6 +156,18 @@ export function PauseMenu({ onResume, onQuit }: PauseMenuProps) {
         >
           Save and Quit to Title
         </button>
+
+        <motion.a 
+          href="https://eimithut.pages.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full py-4 bg-[#C6C6C6] text-black font-bold text-xl border-[4px] border-t-white border-l-white border-b-[#555] border-r-[#555] active:border-t-[#555] active:border-l-[#555] active:border-b-white active:border-r-white active:bg-[#A0A0A0] transition-all flex items-center justify-center gap-3"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <LayoutGrid size={24} />
+          All Projects
+        </motion.a>
       </div>
     </div>
   );
